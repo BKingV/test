@@ -37,7 +37,7 @@ def main():
         for q in questions:
             st.subheader(q['question'])
             selected_option = st.radio("Выберите ответ:", q['options'], key=q['question'])
-            if st.button("Проверить", key="check_" + q['question']):
+            if st.button("Отправить", key="check_" + q['question']):
                 if selected_option == q['answer']:
                     st.success("✅ Правильно!")
                     score += 1
