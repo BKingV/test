@@ -29,6 +29,9 @@ def load_questions_from_excel(file):
         data.columns = data.iloc[0]  # Делаем первую строку заголовками
         data = data[1:].reset_index(drop=True)  
 
+        # Заменяем NaN значения на пустую строку
+        data = data.fillna("")
+
         # Проверяем структуру данных
         st.write(f"📊 Структура данных на листе '{sheet_name}':")
         st.write(data.head())
