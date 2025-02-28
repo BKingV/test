@@ -1,9 +1,10 @@
 import pandas as pd
 import streamlit as st
+import openpyxl  # Убедимся, что библиотека установлена и импортирована
 
 def load_questions_from_excel(file):
     """Загружает вопросы из файла Excel и структурирует данные."""
-    df = pd.read_excel(file, sheet_name=None)  # Загружаем все листы
+    df = pd.read_excel(file, sheet_name=None, engine="openpyxl")  # Указываем движок для работы с .xlsx
     questions = []
     
     for sheet_name, data in df.items():
