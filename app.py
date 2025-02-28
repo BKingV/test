@@ -26,19 +26,4 @@ def load_questions_from_excel(file):
     return questions
 
 def main():
-    """Основная логика работы теста."""
-    st.title("📝 Тренажер для подготовки к тесту")
-    uploaded_file = st.file_uploader("📂 Загрузите файл Excel с вопросами", type=["xlsx", "xls"])
-    
-    if uploaded_file:
-        questions = load_questions_from_excel(uploaded_file)
-        if not questions:
-            st.error("❌ Ошибка: вопросы не загружены.")
-            return
-        
-        blocks = list(set(q['block'] for q in questions))
-        selected_block = st.selectbox("Выберите блок", blocks)
-        block_questions = [q for q in questions if q['block'] == selected_block]
-        
-        topics = list(set(q['topic'] for q in block_questions))
-        selected_topic = st.selectbox("
+    """Основная логика работы
