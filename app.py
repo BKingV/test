@@ -21,7 +21,7 @@ def load_questions_from_docx(file):
                 question_number = cells[0].text.strip()  # Номер вопроса
                 question_text = cells[1].text.strip()  # Текст вопроса
                 options = [opt.strip() for opt in cells[2].text.split("\n") if opt.strip()]  # Варианты ответов
-                correct_answers = [cells[3].text.strip()]  # Правильный ответ
+                correct_answers = [ans.strip() for ans in cells[3].text.split("\n") if ans.strip()]  # Правильные ответы
                 
                 # Проверка наличия вопроса и ответов перед добавлением в список
                 if question_text and options:
@@ -52,12 +52,12 @@ def main():
         random.shuffle(topic_questions)  # Перемешиваем вопросы
         
         score = 0  # Переменная для хранения количества правильных ответов
-        for q in topic_questions:
+        for idx, q in enumerate(topic_questions):
             st.subheader(f"{q['number']}. {q['question']}")  # Вывод номера и вопроса
-            selected_option = st.radio("Выберите ответ:", q['options'], key=q['number'])  # Выбор варианта ответа
+            selected_option = st.radio("Выберите ответ:", q['options'], key=f"q_{idx}")  # Уникальный ключ
             
             # Кнопка проверки ответа
-            if st.button(f"Проверить {q['number']}"):
+            if st.button(f"Проверить {q['number']}", key=f"check_{idx}"):
                 if selected_option in q['correct_answers']:
                     st.success("✅ Правильно!")
                     score += 1  # Увеличиваем счетчик правильных ответов
