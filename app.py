@@ -11,7 +11,7 @@ def load_questions_from_docx(file):
     for para in doc.paragraphs:
         if para.text.startswith("ТЕМА:"):
             current_topic = para.text.strip()
-        
+    
     for table in doc.tables:
         for row in table.rows[1:]:  # Пропускаем заголовки
             cells = row.cells
@@ -19,7 +19,7 @@ def load_questions_from_docx(file):
                 question_number = cells[0].text.strip()
                 question_text = cells[1].text.strip()
                 options = [opt.strip() for opt in cells[2].text.split("\n") if opt.strip()]
-                correct_answers = [ans.strip() for ans in cells[3].text.split("\n") if ans.strip()]
+                correct_answers = [cells[3].text.strip()]
                 
                 if question_text and options:
                     questions.append({
@@ -50,8 +50,8 @@ def main():
         score = 0
         for q in topic_questions:
             st.subheader(f"{q['number']}. {q['question']}")
-            selected_option = st.radio("Выберите ответ:", q['options'], key=q['question'])
-            if st.button("Проверить", key="check_" + q['question']):
+            selected_option = st.radio("Выберите ответ:", q['options'], key=q['number'])
+            if st.button(f"Проверить {q['number']}"):
                 if selected_option in q['correct_answers']:
                     st.success("✅ Правильно!")
                     score += 1
