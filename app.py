@@ -39,4 +39,7 @@ def load_questions_from_excel(file):
                 number += "."  # Добавляем точку, если её нет
 
             questions.append({
-                "block": sheet_name,  # Название б
+                "block": sheet_name,  # Название блока (лист)
+                "topic": row["Тема"],  # Название темы
+                "number": number,  # Номер вопроса с точкой
+                "question": row["Текст вопроса
