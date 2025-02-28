@@ -6,21 +6,24 @@ def load_questions_from_docx(file):
     """Загружает вопросы из файла .docx и корректно извлекает данные"""
     doc = docx.Document(file)
     questions = []
-    current_topic = ""
+    current_topic = ""  # Переменная для хранения текущей темы
     
+    # Поиск тем в тексте
     for para in doc.paragraphs:
         if para.text.startswith("ТЕМА:"):
             current_topic = para.text.strip()
     
+    # Извлечение данных из таблиц
     for table in doc.tables:
         for row in table.rows[1:]:  # Пропускаем заголовки
             cells = row.cells
             if len(cells) >= 4:
-                question_number = cells[0].text.strip()
-                question_text = cells[1].text.strip()
-                options = [opt.strip() for opt in cells[2].text.split("\n") if opt.strip()]
-                correct_answers = [cells[3].text.strip()]
+                question_number = cells[0].text.strip()  # Номер вопроса
+                question_text = cells[1].text.strip()  # Текст вопроса
+                options = [opt.strip() for opt in cells[2].text.split("\n") if opt.strip()]  # Варианты ответов
+                correct_answers = [cells[3].text.strip()]  # Правильный ответ
                 
+                # Проверка наличия вопроса и ответов перед добавлением в список
                 if question_text and options:
                     questions.append({
                         "topic": current_topic,
@@ -42,22 +45,26 @@ def main():
             st.error("❌ Ошибка: вопросы не загружены.")
             return
         
+        # Формируем список тем
         topics = list(set(q['topic'] for q in questions))
         selected_topic = st.selectbox("Выберите тему", topics)
         topic_questions = [q for q in questions if q['topic'] == selected_topic]
-        random.shuffle(topic_questions)
+        random.shuffle(topic_questions)  # Перемешиваем вопросы
         
-        score = 0
+        score = 0  # Переменная для хранения количества правильных ответов
         for q in topic_questions:
-            st.subheader(f"{q['number']}. {q['question']}")
-            selected_option = st.radio("Выберите ответ:", q['options'], key=q['number'])
+            st.subheader(f"{q['number']}. {q['question']}")  # Вывод номера и вопроса
+            selected_option = st.radio("Выберите ответ:", q['options'], key=q['number'])  # Выбор варианта ответа
+            
+            # Кнопка проверки ответа
             if st.button(f"Проверить {q['number']}"):
                 if selected_option in q['correct_answers']:
                     st.success("✅ Правильно!")
-                    score += 1
+                    score += 1  # Увеличиваем счетчик правильных ответов
                 else:
                     st.error(f"❌ Неправильно. Правильный ответ: {', '.join(q['correct_answers'])}")
         
+        # Итоговый результат теста
         st.write(f"🏆 Тест завершен! Ваш результат: {score}/{len(topic_questions)}")
 
 if __name__ == "__main__":
