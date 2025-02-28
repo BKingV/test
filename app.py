@@ -48,14 +48,16 @@ def main():
         score = 0
         for idx, q in enumerate(topic_questions):
             st.write(f"**{q['number']}. {q['question']}**")  # Исправлено форматирование вывода
-            selected_option = st.radio("Выберите ответ:", q['options'], key=f"q_{idx}")
+            selected_option = st.radio("Выберите ответ:", q['options'], key=f"q_{idx}", index=None)
             
-            if st.button(f"Проверить", key=f"check_{idx}"):
-                if selected_option in q['correct_answers']:
+            if st.button(f"Проверить {q['number']}", key=f"check_{idx}"):
+                if selected_option and selected_option in q['correct_answers']:
                     st.success("✅ Правильно!")
                     score += 1
-                else:
+                elif selected_option:
                     st.error(f"❌ Неправильно. Правильный ответ: {', '.join(q['correct_answers'])}")
+                else:
+                    st.warning("⚠️ Выберите вариант ответа перед проверкой.")
         
         st.write(f"🏆 Тест завершен! Ваш результат: {score}/{len(topic_questions)}")
 
