@@ -12,7 +12,7 @@ def load_questions_from_excel(file):
     for sheet_name, data in df.items():
         st.write(f"🔍 Обрабатываем лист: {sheet_name}")
 
-        # Ищем строку, где в первом столбце есть "1"
+        # Ищем строку, где в первой колонке есть "1"
         start_row = None
         for i, value in enumerate(data.iloc[:, 0]):  
             if pd.notna(value) and str(value).strip() == "1":
@@ -30,17 +30,20 @@ def load_questions_from_excel(file):
 
         # Перебираем строки и загружаем вопросы
         for _, row in data.iterrows():
-            number = str(row.iloc[0]).strip()  # Берем номер вопроса из первого столбца
+            if len(row) < 5:  # Проверяем, хватает ли колонок
+                continue  
+
+            number = str(row.iloc[0]).strip()  
             if not number.endswith("."):
-                number += "."  # Добавляем точку, если её нет
+                number += "."  
 
             questions.append({
                 "block": sheet_name,  
-                "topic": row.iloc[1],  # Второй столбец — это тема
+                "topic": row.iloc[1] if pd.notna(row.iloc[1]) else "Без темы",  
                 "number": number,  
-                "question": row.iloc[2],  # Третий столбец — текст вопроса
-                "options": str(row.iloc[3]).split(";"),  # Четвертый — варианты ответа
-                "correct_answers": str(row.iloc[4]).split(";")  # Пятый — правильный ответ
+                "question": row.iloc[2] if pd.notna(row.iloc[2]) else "Вопрос не указан",  
+                "options": str(row.iloc[3]).split(";") if pd.notna(row.iloc[3]) else [],  
+                "correct_answers": str(row.iloc[4]).split(";") if pd.notna(row.iloc[4]) else []  
             })
 
     st.write(f"✅ Загружено {len(questions)} вопросов!")
