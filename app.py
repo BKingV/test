@@ -3,21 +3,32 @@ import docx
 import streamlit as st
 
 def load_questions_from_docx(file):
-    """Загружает вопросы из файла .docx, проверяя количество ячеек в строке."""
+    """Загружает вопросы из файла .docx и корректно извлекает данные"""
     doc = docx.Document(file)
     questions = []
+    current_topic = ""
+    
+    for para in doc.paragraphs:
+        if para.text.startswith("ТЕМА:"):
+            current_topic = para.text.strip()
+        
     for table in doc.tables:
         for row in table.rows[1:]:  # Пропускаем заголовки
             cells = row.cells
-            if len(cells) < 4:
-                continue  # Пропускаем строки с недостаточным количеством ячеек
-            
-            question_text = cells[1].text.strip() if len(cells) > 1 else "Вопрос отсутствует"
-            options = [cells[i].text.strip() for i in range(2, min(5, len(cells)))]
-            answer = cells[2].text.strip() if len(cells) > 2 else "Ответ отсутствует"
-            
-            if question_text and options and answer:
-                questions.append({"question": question_text, "options": options, "answer": answer})
+            if len(cells) >= 4:
+                question_number = cells[0].text.strip()
+                question_text = cells[1].text.strip()
+                options = [opt.strip() for opt in cells[2].text.split("\n") if opt.strip()]
+                correct_answers = [ans.strip() for ans in cells[3].text.split("\n") if ans.strip()]
+                
+                if question_text and options:
+                    questions.append({
+                        "topic": current_topic,
+                        "number": question_number,
+                        "question": question_text,
+                        "options": options,
+                        "correct_answers": correct_answers
+                    })
     return questions
 
 def main():
@@ -28,24 +39,26 @@ def main():
     if uploaded_file:
         questions = load_questions_from_docx(uploaded_file)
         if not questions:
-            st.error("❌ Ошибка: вопросы не загружены или файл имеет неверный формат.")
+            st.error("❌ Ошибка: вопросы не загружены.")
             return
         
-        random.shuffle(questions)
-        score = 0
+        topics = list(set(q['topic'] for q in questions))
+        selected_topic = st.selectbox("Выберите тему", topics)
+        topic_questions = [q for q in questions if q['topic'] == selected_topic]
+        random.shuffle(topic_questions)
         
-        for q in questions:
-            st.subheader(q['question'])
+        score = 0
+        for q in topic_questions:
+            st.subheader(f"{q['number']}. {q['question']}")
             selected_option = st.radio("Выберите ответ:", q['options'], key=q['question'])
-            if st.button("Отправить", key="check_" + q['question']):
-                if selected_option == q['answer']:
+            if st.button("Проверить", key="check_" + q['question']):
+                if selected_option in q['correct_answers']:
                     st.success("✅ Правильно!")
                     score += 1
                 else:
-                    st.error(f"❌ Неправильно. Правильный ответ: {q['answer']}")
+                    st.error(f"❌ Неправильно. Правильный ответ: {', '.join(q['correct_answers'])}")
         
-        st.write(f"🏆 Тест завершен! Ваш результат: {score}/{len(questions)}")
+        st.write(f"🏆 Тест завершен! Ваш результат: {score}/{len(topic_questions)}")
 
 if __name__ == "__main__":
     main()
-
