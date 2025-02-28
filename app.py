@@ -8,6 +8,11 @@ def load_questions_from_excel(file):
     questions = []
     
     for sheet_name, data in df.items():
+        print(f"Заголовки колонок в листе '{sheet_name}':", data.columns)  # Выводим заголовки для отладки
+        
+        if "№ п/п" not in data.columns:
+            raise ValueError('Столбец "№ п/п" не найден в одном из листов Excel!')
+        
         for _, row in data.iterrows():
             if pd.notna(row["№ п/п"]):
                 questions.append({
@@ -36,24 +41,4 @@ def main():
         block_questions = [q for q in questions if q['block'] == selected_block]
         
         topics = list(set(q['topic'] for q in block_questions))
-        selected_topic = st.selectbox("Выберите тему", topics)
-        topic_questions = [q for q in block_questions if q['topic'] == selected_topic]
-        
-        score = 0
-        for idx, q in enumerate(topic_questions):
-            st.write(f"**{q['number']}. {q['question']}**")
-            selected_option = st.radio("Выберите ответ:", q['options'], key=f"q_{idx}", index=None)
-            
-            if st.button(f"Проверить {q['number']}", key=f"check_{idx}"):
-                if selected_option and selected_option in q['correct_answers']:
-                    st.success("✅ Правильно!")
-                    score += 1
-                elif selected_option:
-                    st.error(f"❌ Неправильно. Правильный ответ: {', '.join(q['correct_answers'])}")
-                else:
-                    st.warning("⚠️ Выберите вариант ответа перед проверкой.")
-        
-        st.write(f"🏆 Тест завершен! Ваш результат: {score}/{len(topic_questions)}")
-
-if __name__ == "__main__":
-    main()
+        selected_topic = st.selectbox("
