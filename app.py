@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-import openpyxl  
+import openpyxl
 
 @st.cache_data
 def load_questions_from_excel(file):
@@ -30,7 +30,10 @@ def load_questions_from_excel(file):
         data = data[1:].reset_index(drop=True)  
 
         # Заменяем NaN значения на пустую строку
-        data = data.fillna("")
+        data = data.fillna("")  # Заполняем пустые ячейки пустыми строками
+
+        # Убираем строки, в которых все столбцы пустые
+        data = data.dropna(how='all')
 
         # Проверяем структуру данных
         st.write(f"📊 Структура данных на листе '{sheet_name}':")
