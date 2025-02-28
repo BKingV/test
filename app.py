@@ -1,53 +1,46 @@
-import docx
+import pandas as pd
 import streamlit as st
 
-def load_questions_from_docx(file):
-    """Загружает вопросы из файла .docx и корректно извлекает данные"""
-    doc = docx.Document(file)
+def load_questions_from_excel(file):
+    """Загружает вопросы из файла Excel и структурирует данные."""
+    df = pd.read_excel(file, sheet_name=None)  # Загружаем все листы
     questions = []
-    current_topic = ""
     
-    for para in doc.paragraphs:
-        if para.text.startswith("ТЕМА:"):
-            current_topic = para.text.strip()
-    
-    for table in doc.tables:
-        for row in table.rows[1:]:  # Пропускаем заголовки
-            cells = row.cells
-            if len(cells) >= 4:
-                question_number = cells[0].text.strip()
-                question_text = cells[1].text.strip()
-                options = [opt.strip() for opt in cells[2].text.split("\n") if opt.strip()]  # Корректно разбираем варианты ответов
-                correct_answers = [ans.strip() for ans in cells[3].text.split("\n") if ans.strip()]  # Корректно разбираем эталонные ответы
-                
-                if question_text and options:
-                    questions.append({
-                        "topic": current_topic,
-                        "number": question_number,
-                        "question": question_text,
-                        "options": options,
-                        "correct_answers": correct_answers
-                    })
+    for sheet_name, data in df.items():
+        for _, row in data.iterrows():
+            if pd.notna(row["№ п/п"]):
+                questions.append({
+                    "block": sheet_name,  # Название блока
+                    "topic": row["Тема"],  # Название темы
+                    "number": row["№ п/п"],  # Номер вопроса
+                    "question": row["Текст вопроса"],  # Текст вопроса
+                    "options": str(row["Варианты ответа"]).split(";"),  # Разделяем варианты ответа
+                    "correct_answers": str(row["Эталон"]).split(";")  # Разделяем правильные ответы
+                })
     return questions
 
 def main():
-    """Основная логика работы теста"""
+    """Основная логика работы теста."""
     st.title("📝 Тренажер для подготовки к тесту")
-    uploaded_file = st.file_uploader("📂 Загрузите файл .docx с вопросами", type=["docx"])
+    uploaded_file = st.file_uploader("📂 Загрузите файл Excel с вопросами", type=["xlsx", "xls"])
     
     if uploaded_file:
-        questions = load_questions_from_docx(uploaded_file)
+        questions = load_questions_from_excel(uploaded_file)
         if not questions:
             st.error("❌ Ошибка: вопросы не загружены.")
             return
         
-        topics = list(set(q['topic'] for q in questions))
+        blocks = list(set(q['block'] for q in questions))
+        selected_block = st.selectbox("Выберите блок", blocks)
+        block_questions = [q for q in questions if q['block'] == selected_block]
+        
+        topics = list(set(q['topic'] for q in block_questions))
         selected_topic = st.selectbox("Выберите тему", topics)
-        topic_questions = [q for q in questions if q['topic'] == selected_topic]
+        topic_questions = [q for q in block_questions if q['topic'] == selected_topic]
         
         score = 0
         for idx, q in enumerate(topic_questions):
-            st.write(f"**{q['number']}. {q['question']}**")  # Исправлено форматирование вывода
+            st.write(f"**{q['number']}. {q['question']}**")
             selected_option = st.radio("Выберите ответ:", q['options'], key=f"q_{idx}", index=None)
             
             if st.button(f"Проверить {q['number']}", key=f"check_{idx}"):
