@@ -7,9 +7,15 @@ def load_questions_from_excel(file):
     df = pd.read_excel(file, sheet_name=None, engine="openpyxl")  # Указываем движок для работы с .xlsx
     questions = []
 
+    # Выведем содержимое всех листов для отладки
     for sheet_name, data in df.items():
+        st.write(f"Обрабатываем лист: {sheet_name}")
+        st.write("Пример данных на листе:")
+        st.write(data.head())  # Показываем первые несколько строк
+
         # Пропускаем текст до столбца "№ п/п"
         if "№ п/п" not in data.columns:
+            st.error(f"Ошибка: столбец '№ п/п' не найден на листе '{sheet_name}'.")
             continue  # Если нет столбца "№ п/п", переходим к следующему листу
 
         # Читаем только те строки, которые содержат данные
@@ -23,6 +29,7 @@ def load_questions_from_excel(file):
                     "options": str(row["Варианты ответа"]).split(";"),  # Разделяем варианты ответа
                     "correct_answers": str(row["Эталон"]).split(";")  # Разделяем правильные ответы
                 })
+
     return questions
 
 def main():
