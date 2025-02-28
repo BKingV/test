@@ -17,8 +17,8 @@ def load_questions_from_docx(file):
             if len(cells) >= 4:
                 question_number = cells[0].text.strip()
                 question_text = cells[1].text.strip()
-                options = [cells[2].text.strip()] if '\n' not in cells[2].text else cells[2].text.strip().split("\n")
-                correct_answers = [cells[3].text.strip()] if '\n' not in cells[3].text else cells[3].text.strip().split("\n")
+                options = [opt.strip() for opt in cells[2].text.split("\n") if opt.strip()]  # Корректно разбираем варианты ответов
+                correct_answers = [ans.strip() for ans in cells[3].text.split("\n") if ans.strip()]  # Корректно разбираем эталонные ответы
                 
                 if question_text and options:
                     questions.append({
@@ -47,10 +47,10 @@ def main():
         
         score = 0
         for idx, q in enumerate(topic_questions):
-            st.subheader(f"{q['number']}. {q['question']}")
+            st.write(f"**{q['number']}. {q['question']}**")  # Исправлено форматирование вывода
             selected_option = st.radio("Выберите ответ:", q['options'], key=f"q_{idx}")
             
-            if st.button(f"Проверить {q['number']}", key=f"check_{idx}"):
+            if st.button(f"Проверить", key=f"check_{idx}"):
                 if selected_option in q['correct_answers']:
                     st.success("✅ Правильно!")
                     score += 1
