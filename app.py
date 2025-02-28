@@ -44,4 +44,4 @@ def load_questions_from_excel(file):
                 "number": number,  # Номер вопроса с точкой
                 "question": row["Текст вопроса"],  # Теперь строка полностью закрыта
                 "options": str(row["Варианты ответа"]).split(";"),  # Разделяем варианты ответа
-                "correct_answers": str(row)
+                "correct_answers": str(row)})
