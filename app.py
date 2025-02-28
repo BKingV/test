@@ -3,18 +3,18 @@ import streamlit as st
 import openpyxl  # Убедимся, что библиотека установлена и импортирована
 
 def load_questions_from_excel(file):
-    """Загружает вопросы из файла Excel и структурирует данные."""
+    """Загружает вопросы из файла Excel и структурирует данные, начиная с ячейки с '№ п/п'."""
     df = pd.read_excel(file, sheet_name=None, engine="openpyxl")  # Указываем движок для работы с .xlsx
     questions = []
-    
+
     for sheet_name, data in df.items():
-        print(f"Заголовки колонок в листе '{sheet_name}':", data.columns)  # Выводим заголовки для отладки
-        
+        # Пропускаем текст до столбца "№ п/п"
         if "№ п/п" not in data.columns:
-            raise ValueError('Столбец "№ п/п" не найден в одном из листов Excel!')
-        
+            continue  # Если нет столбца "№ п/п", переходим к следующему листу
+
+        # Читаем только те строки, которые содержат данные
         for _, row in data.iterrows():
-            if pd.notna(row["№ п/п"]):
+            if pd.notna(row["№ п/п"]):  # Если в строке есть номер вопроса
                 questions.append({
                     "block": sheet_name,  # Название блока
                     "topic": row["Тема"],  # Название темы
@@ -29,26 +29,26 @@ def main():
     """Основная логика работы теста."""
     st.title("📝 Тренажер для подготовки к тесту")
     uploaded_file = st.file_uploader("📂 Загрузите файл Excel с вопросами", type=["xlsx", "xls"])
-    
+
     if uploaded_file:
         questions = load_questions_from_excel(uploaded_file)
         if not questions:
             st.error("❌ Ошибка: вопросы не загружены.")
             return
-        
+
         blocks = list(set(q['block'] for q in questions))
         selected_block = st.selectbox("Выберите блок", blocks)
         block_questions = [q for q in questions if q['block'] == selected_block]
-        
+
         topics = list(set(q['topic'] for q in block_questions))
-        selected_topic = st.selectbox("Выберите тему", topics)  # Исправлена ошибка в этой строке
+        selected_topic = st.selectbox("Выберите тему", topics)
         topic_questions = [q for q in block_questions if q['topic'] == selected_topic]
-        
+
         score = 0
         for idx, q in enumerate(topic_questions):
             st.write(f"**{q['number']}. {q['question']}**")
             selected_option = st.radio("Выберите ответ:", q['options'], key=f"q_{idx}", index=None)
-            
+
             if st.button(f"Проверить {q['number']}", key=f"check_{idx}"):
                 if selected_option and selected_option in q['correct_answers']:
                     st.success("✅ Правильно!")
@@ -57,7 +57,7 @@ def main():
                     st.error(f"❌ Неправильно. Правильный ответ: {', '.join(q['correct_answers'])}")
                 else:
                     st.warning("⚠️ Выберите вариант ответа перед проверкой.")
-        
+
         st.write(f"🏆 Тест завершен! Ваш результат: {score}/{len(topic_questions)}")
 
 if __name__ == "__main__":
