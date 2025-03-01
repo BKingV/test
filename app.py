@@ -47,37 +47,42 @@ def extract_questions_from_docx(docx_content):
 
             options_text = ";".join(options)
             correct_answers_text = ";".join(correct_answers)
-            data.append([current_block, current_topic, question_text, options_text, correct_answers_text])
+            data.append([current_block, current_topic, question_text, options, correct_answers])
 
     return pd.DataFrame(data, columns=["Блок", "Тема", "Вопрос", "Варианты ответов", "Эталон"])
 
 def main():
-    st.title("Конвертер тестов из Word в Excel")
-    st.write("Загрузите файл Word, чтобы извлечь блоки, темы и вопросы")
-
-    # Разрешаем пользователю загрузить файл
-    uploaded_file = st.file_uploader("Выберите файл Word", type="docx")
-
+    st.title("Тестирование из Word-файла")
+    
+    uploaded_file = st.file_uploader("Загрузите файл Word", type="docx")
+    
     if uploaded_file is not None:
-        # Обрабатываем файл
-        df = extract_questions_from_docx(uploaded_file.read())
+        docx_content = uploaded_file.read()
+        df = extract_questions_from_docx(docx_content)
         
         st.write("Извлеченные данные:")
         st.dataframe(df)
+        
+        if not df.empty:
+            st.subheader("Начнем тестирование!")
+            score = 0
+            total_questions = len(df)
 
-        # Сохранение в Excel
-        excel_io = io.BytesIO()
-        with pd.ExcelWriter(excel_io, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Тесты')
-        excel_io.seek(0)
+            for index, row in df.iterrows():
+                st.write(f"**{row['Вопрос']}**")
+                answers = row['Варианты ответов']
+                correct_answers = row['Эталон']
+                
+                # Getting user response
+                selected_option = st.radio("Выберите вариант:", options=answers)
 
-        # Предоставляем ссылку для скачивания эксель файла
-        st.download_button(
-            label="Скачать как Excel",
-            data=excel_io,
-            file_name="questions.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+                # Check if the selected option is among the correct ones
+                if selected_option in correct_answers:
+                    score += 1
+            
+            # Show results
+            st.write("### Результаты")
+            st.write(f"Вы правильно ответили на {score} из {total_questions} вопросов.")
 
 if __name__ == "__main__":
     main()
