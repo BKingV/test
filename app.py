@@ -1,87 +1,55 @@
 import streamlit as st
-from docx import Document
 import pandas as pd
-import re
+from docx import Document
 import io
 
-def extract_questions_from_docx(docx_content):
-    doc = Document(io.BytesIO(docx_content))
+def extract_questions_from_docx(file):
+    doc = Document(file)
     data = []
-
-    current_block = ""
-    current_topic = ""
-
-    paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
-
-    for i in range(len(paragraphs)):
-        text = paragraphs[i]
-
-        if text.isupper() and "БЛОК" in text:
-            current_block = text
-            current_topic = ""
-            continue
-
-        if text.startswith("ТЕМА:"):
-            current_topic = text.replace("ТЕМА:", "").strip()
-            continue
-
-        if re.match(r"^\d+[\.)]", text):
-            question_text = re.sub(r"^\d+[\.)]\s*", "", text)
-            options = []
-            correct_answers = []
-
-            j = i + 1
-            while j < len(paragraphs) - 1:
-                option_text = paragraphs[j]
-                next_text = paragraphs[j + 1]
-
-                if re.match(r"^\d+[\.)]", option_text) or option_text.startswith("ТЕМА:") or "БЛОК" in option_text:
-                    break
-
-                if "Эталон" in next_text:
-                    correct_answers.append(option_text)
-
-                options.append(option_text)
-                j += 2
-
-            data.append([current_block, current_topic, question_text, options, correct_answers])
-
-    return pd.DataFrame(data, columns=["Блок", "Тема", "Вопрос", "Варианты ответов", "Эталон"])
-
-def main():
-    st.title("Тестирование из Word-файла")
     
-    uploaded_file = st.file_uploader("Загрузите файл Word", type="docx")
-    
-    if uploaded_file is not None:
-        docx_content = uploaded_file.read()
-        df = extract_questions_from_docx(docx_content)
+    for table in doc.tables:
+        rows = table.rows
+        if len(rows) < 2:
+            continue  # Пропускаем слишком маленькие таблицы
         
-        st.write("Извлеченные данные:")
-        st.dataframe(df)
+        question = ""
+        answers = []
+        correct_answers = []
         
-        if not df.empty:
-            st.subheader("Начнем тестирование!")
-            score = 0
-            total_questions = len(df)
-
-            for index, row in df.iterrows():
-                st.write(f"**{row['Вопрос']}**")
-                answers = row['Варианты ответов']
-                correct_answers = row['Эталон']
-                
-                # Добавляем уникальный ключ для каждого вопроса
-                selected_option = st.radio(
-                    "Выберите вариант:", options=answers, key=f"question_{index}"
-                )
-
-                # Check if the selected option is among the correct ones
-                if selected_option in correct_answers:
-                    score += 1
+        for row in rows[1:]:  # Пропускаем заголовок
+            cells = row.cells
             
-            # Show results
-            st.write("### Результаты")
-            st.write(f"Вы правильно ответили на {score} из {total_questions} вопросов.")
+            if len(cells) >= 3:
+                if cells[0].text.strip():
+                    if question:
+                        data.append([question, " | ".join(answers), " | ".join(correct_answers)])
+                    
+                    question = cells[1].text.strip()
+                    answers = []
+                    correct_answers = []
+                
+                answer = cells[2].text.strip()
+                answers.append(answer)
+                if len(cells) > 3 and 'Эталон' in cells[3].text.strip():
+                    correct_answers.append(answer)
+        
+        if question:
+            data.append([question, " | ".join(answers), " | ".join(correct_answers)])
+    
+    return pd.DataFrame(data, columns=["Вопрос", "Варианты ответов", "Правильные ответы"])
 
-if __name__ == "__main__":
-    main()
+st.title("Извлечение тестов из Word")
+uploaded_file = st.file_uploader("Загрузите файл .docx", type=["docx"])
+
+if uploaded_file:
+    df = extract_questions_from_docx(uploaded_file)
+    st.write("### Извлечённые вопросы:")
+    st.dataframe(df)
+    
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name="Тестовые вопросы")
+        writer.close()
+    output.seek(0)
+    
+    st.download_button("Скачать Excel", data=output, file_name="test_questions.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
