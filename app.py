@@ -22,7 +22,7 @@ def extract_questions_from_docx(file):
             if len(cells) >= 3:
                 if cells[0].text.strip():
                     if question:
-                        data.append([question, " | ".join(answers), " | ".join(correct_answers)])
+                        data.append([question, answers, correct_answers])
                     
                     question = cells[1].text.strip()
                     answers = []
@@ -34,22 +34,36 @@ def extract_questions_from_docx(file):
                     correct_answers.append(answer)
         
         if question:
-            data.append([question, " | ".join(answers), " | ".join(correct_answers)])
+            data.append([question, answers, correct_answers])
     
-    return pd.DataFrame(data, columns=["Вопрос", "Варианты ответов", "Правильные ответы"])
+    return data
 
-st.title("Извлечение тестов из Word")
+def run_test(questions):
+    st.subheader("Тестирование")
+    score = 0
+    total = len(questions)
+    user_answers = {}
+    
+    for i, (question, answers, correct_answers) in enumerate(questions):
+        st.write(f"**{i+1}. {question}**")
+        selected = st.radio("Выберите ответ:", answers, key=f"q_{i}")
+        user_answers[question] = selected
+        
+        if selected in correct_answers:
+            score += 1
+    
+    if st.button("Завершить тест"):  
+        st.write(f"Вы правильно ответили на {score} из {total} вопросов!")
+        st.write("## Ваши ответы:")
+        for question, selected in user_answers.items():
+            st.write(f"{question}: {selected}")
+
+st.title("Тестирование из Word")
 uploaded_file = st.file_uploader("Загрузите файл .docx", type=["docx"])
 
 if uploaded_file:
-    df = extract_questions_from_docx(uploaded_file)
-    st.write("### Извлечённые вопросы:")
-    st.dataframe(df)
-    
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name="Тестовые вопросы")
-        writer.close()
-    output.seek(0)
-    
-    st.download_button("Скачать Excel", data=output, file_name="test_questions.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    questions = extract_questions_from_docx(uploaded_file)
+    if questions:
+        run_test(questions)
+    else:
+        st.error("Не удалось извлечь вопросы. Проверьте формат таблицы в файле.")
