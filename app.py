@@ -5,7 +5,6 @@ import re
 import io
 
 def extract_questions_from_docx(docx_content):
-    # Чтение Word-документа из загруженного контента
     doc = Document(io.BytesIO(docx_content))
     data = []
 
@@ -45,8 +44,6 @@ def extract_questions_from_docx(docx_content):
                 options.append(option_text)
                 j += 2
 
-            options_text = ";".join(options)
-            correct_answers_text = ";".join(correct_answers)
             data.append([current_block, current_topic, question_text, options, correct_answers])
 
     return pd.DataFrame(data, columns=["Блок", "Тема", "Вопрос", "Варианты ответов", "Эталон"])
@@ -73,8 +70,10 @@ def main():
                 answers = row['Варианты ответов']
                 correct_answers = row['Эталон']
                 
-                # Getting user response
-                selected_option = st.radio("Выберите вариант:", options=answers)
+                # Добавляем уникальный ключ для каждого вопроса
+                selected_option = st.radio(
+                    "Выберите вариант:", options=answers, key=f"question_{index}"
+                )
 
                 # Check if the selected option is among the correct ones
                 if selected_option in correct_answers:
