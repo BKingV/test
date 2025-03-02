@@ -150,28 +150,61 @@ if uploaded_file:
 if st.session_state.get("show_result", False):
     st.subheader("📊 Результаты теста")
 
-    results_data = []
+    results_html = """
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 16px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .correct {
+            background-color: #d4edda; /* Зеленый */
+            color: #155724;
+        }
+        .incorrect {
+            background-color: #f8d7da; /* Красный */
+            color: #721c24;
+        }
+    </style>
+    <table>
+        <tr>
+            <th>Вопрос</th>
+            <th>Ваш ответ</th>
+            <th>Правильный ответ</th>
+        </tr>
+    """
+
     correct_count = 0
     total_questions = len(st.session_state["questions"])
 
     for q_idx, question_data in enumerate(st.session_state["questions"]):
         user_answers = st.session_state["selected_answers"].get(q_idx, [])
         correct_answers = question_data["correct"]
-        
+
         is_correct = set(user_answers) == set(correct_answers)
-        results_data.append([
-            question_data["question"],
-            ", ".join(user_answers) if user_answers else "—",
-            ", ".join(correct_answers),
-            "✅" if is_correct else "❌"
-        ])
+        row_class = "correct" if is_correct else "incorrect"
+        results_html += f"""
+        <tr class="{row_class}">
+            <td>{question_data["question"]}</td>
+            <td>{", ".join(user_answers) if user_answers else "—"}</td>
+            <td>{", ".join(correct_answers)}</td>
+        </tr>
+        """
 
         if is_correct:
             correct_count += 1
 
-    df_results = pd.DataFrame(results_data, columns=["Вопрос", "Ваш ответ", "Правильный ответ", "Результат"])
-    st.dataframe(df_results)
+    results_html += "</table>"
 
+    st.markdown(results_html, unsafe_allow_html=True)
     st.success(f"🎉 Вы ответили правильно на {correct_count} из {total_questions} вопросов.")
 
     if st.button("🔄 Пройти еще раз"):
@@ -182,3 +215,4 @@ if st.session_state.get("show_result", False):
         st.session_state["show_result"] = False
         st.session_state["selected_answers"] = {}
         st.rerun()
+
