@@ -98,27 +98,25 @@ if "questions" in st.session_state and "current_question" in st.session_state an
             selected_answers.append(answer)
 
     if st.button("Ответить"):
-        if not selected_answers:  # Если пользователь не выбрал ни одного ответа
-            st.warning("⚠️ Выберите хотя бы один вариант ответа перед продолжением!")
+        correct_set = set(question_data["correct"])
+        selected_set = set(selected_answers)
+
+        # Начисляем балл только если выбраны ТОЛЬКО правильные ответы
+        if selected_set == correct_set:
+            st.session_state["score"] += 1
+
+        # Всегда переходим к следующему вопросу
+        if q_idx + 1 < len(st.session_state["questions"]):
+            st.session_state["current_question"] += 1
+
+            # Сброс состояния чекбоксов
+            for i in range(len(question_data["answers"])):
+                del st.session_state[f"q{q_idx}_a{i}"]
+
+            st.rerun()  # Гарантированно обновляем страницу
         else:
-            correct_set = set(question_data["correct"])
-            selected_set = set(selected_answers)
-
-            if selected_set == correct_set:
-                st.session_state["score"] += 1
-
-            # Переход к следующему вопросу
-            if q_idx + 1 < len(st.session_state["questions"]):
-                st.session_state["current_question"] += 1
-
-                # Сброс состояния чекбоксов
-                for i in range(len(question_data["answers"])):
-                    st.session_state[f"q{q_idx}_a{i}"] = False
-
-                st.rerun()  # Гарантированно обновляем страницу
-            else:
-                st.session_state["show_result"] = True
-                st.rerun()
+            st.session_state["show_result"] = True
+            st.rerun()
 
 # Отображение результата теста
 if st.session_state.get("show_result", False):
