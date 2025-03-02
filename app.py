@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 from docx import Document
 
 st.title("📄 Онлайн-тестирование по темам")
@@ -7,7 +6,7 @@ st.title("📄 Онлайн-тестирование по темам")
 uploaded_file = st.file_uploader("Загрузите Word-файл с тестами", type=["docx"])
 
 def extract_themes_and_questions(doc):
-    """Извлекает темы, подтемы и вопросы, начиная обработку только с первой темы, после которой идет таблица"""
+    """Извлекает темы, подтемы и вопросы, начиная обработку с первой темы, после которой идет таблица"""
     themes = {}
 
     st.write("📌 Количество таблиц в документе:", len(doc.tables))  # Проверяем количество таблиц
@@ -17,6 +16,7 @@ def extract_themes_and_questions(doc):
 
     st.write("📌 Содержимое последней таблицы:", [[cell.text for cell in row.cells] for row in table.rows])
 
+    current_theme = "Тема по умолчанию"  # Создаём переменную для хранения названия темы
     current_subtheme = None  # Переменная для хранения текущей подтемы
 
     for row in table.rows[1:]:
@@ -38,13 +38,15 @@ def extract_themes_and_questions(doc):
                 "correct": [],
                 "subtheme": current_subtheme  # Привязываем вопрос к текущей подтеме
             }
-            themes.setdefault("Тема", []).append(question_data)
+            themes.setdefault(current_theme, []).append(question_data)
 
         # Добавляем варианты ответов
-        if themes["Тема"] and "question" in themes["Тема"][-1]:
-            themes["Тема"][-1]["answers"].append(answer_text)
+        if themes[current_theme] and "question" in themes[current_theme][-1]:
+            themes[current_theme][-1]["answers"].append(answer_text)
             if correct_text:
-                themes["Тема"][-1]["correct"].append(answer_text)
+                themes[current_theme][-1]["correct"].append(answer_text)
+
+    st.write("📌 Итоговая структура данных:", themes)  # Проверяем, загружаются ли вопросы
 
     return themes
 
