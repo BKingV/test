@@ -80,8 +80,10 @@ if uploaded_file:
             st.subheader("📚 Выберите тему:")
             selected_theme = st.selectbox("Выберите тему", list(st.session_state["themes"].keys()))
 
+            # Получаем список уникальных подтем
             subthemes = list(set(q["subtheme"] for q in st.session_state["themes"][selected_theme] if q["subtheme"]))
 
+            # Если подтемы есть – показываем список для выбора
             if subthemes:
                 selected_subtheme = st.selectbox("Выберите подтему", subthemes)
             else:
@@ -91,10 +93,11 @@ if uploaded_file:
                 st.session_state["selected_theme"] = selected_theme
                 st.session_state["selected_subtheme"] = selected_subtheme
 
+                # Если выбрана подтема – берем только ее вопросы
                 if selected_subtheme:
                     st.session_state["questions"] = [q for q in st.session_state["themes"][selected_theme] if q["subtheme"] == selected_subtheme]
                 else:
-                    st.session_state["questions"] = st.session_state["themes"][selected_theme]
+                    st.session_state["questions"] = st.session_state["themes"][selected_theme]  # Берем все вопросы темы
 
                 st.session_state["current_question"] = 0
                 st.session_state["test_started"] = True
