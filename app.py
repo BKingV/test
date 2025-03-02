@@ -9,8 +9,8 @@ def extract_themes_and_questions(doc):
     """Извлекает темы и вопросы, начиная обработку только с первой темы, после которой идет таблица"""
     themes = {}
     current_theme = None
-    processing_started = False  # Начинаем обработку только после первой найденной "ТЕМА:"
-    tables_iter = iter(doc.tables)  # Создаем итератор по таблицам
+    processing_started = False  
+    tables_iter = iter(doc.tables)  
 
     for para in doc.paragraphs:
         text = para.text.strip()
@@ -19,17 +19,16 @@ def extract_themes_and_questions(doc):
             current_theme = text.replace("ТЕМА:", "").strip()
 
             try:
-                # Проверяем, есть ли таблица сразу после темы
                 table = next(tables_iter)  
                 themes[current_theme] = []
 
                 rows = table.rows
                 if len(rows) < 2:
-                    continue  # Пропускаем пустые таблицы
+                    continue  
 
                 headers = [cell.text.strip().lower() for cell in rows[0].cells]
                 if "текст вопроса" not in headers or "варианты ответов" not in headers:
-                    continue  # Пропускаем таблицы без заголовков
+                    continue  
 
                 question_idx = headers.index("текст вопроса")
                 answers_idx = headers.index("варианты ответов")
@@ -37,12 +36,11 @@ def extract_themes_and_questions(doc):
 
                 current_question = None
 
-                for row in rows[1:]:  # Пропускаем заголовки
+                for row in rows[1:]:  
                     question_text = row.cells[question_idx].text.strip()
                     answer_text = row.cells[answers_idx].text.strip()
                     correct_text = row.cells[correct_idx].text.strip() if correct_idx else ""
 
-                    # Если встретили новый вопрос — создаем его
                     if current_question is None or current_question["question"] != question_text:
                         current_question = {
                             "question": question_text,
@@ -51,15 +49,14 @@ def extract_themes_and_questions(doc):
                         }
                         themes[current_theme].append(current_question)
 
-                    # Добавляем вариант ответа к текущему вопросу
                     current_question["answers"].append(answer_text)
                     if correct_text:
                         current_question["correct"].append(answer_text)
 
-                processing_started = True  # Теперь можно обрабатывать темы
+                processing_started = True  
 
             except StopIteration:
-                continue  # Если после темы нет таблицы, продолжаем искать дальше
+                continue  
 
     if not processing_started:
         st.warning("⚠️ В файле не найдены темы с таблицами. Проверьте формат документа.")
@@ -78,31 +75,39 @@ if uploaded_file:
             st.session_state["selected_theme"] = None
             st.session_state["questions"] = []
             st.session_state["current_question"] = 0
+            st.session_state["test_started"] = False
             st.session_state["show_result"] = False
             st.session_state["selected_answers"] = {}
 
-        # Выбор темы
-        st.header("Выберите тему")
-        theme = st.selectbox("Тема:", list(themes.keys()), index=0 if not st.session_state["selected_theme"] else list(themes.keys()).index(st.session_state["selected_theme"]))
+        if not st.session_state["test_started"]:  
+            st.header("Выберите тему")
+            theme = st.selectbox("Тема:", list(themes.keys()), index=0 if not st.session_state["selected_theme"] else list(themes.keys()).index(st.session_state["selected_theme"]), disabled=st.session_state["test_started"])
 
-        if theme:
-            st.session_state["selected_theme"] = theme
-
-            # Проверяем, есть ли вопросы в теме
-            if len(themes[theme]) > 0:
-                st.session_state["questions"] = themes[theme]
-                st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
+            if theme:
+                st.session_state["selected_theme"] = theme
 
                 if st.button("Начать тест"):
+                    st.session_state["test_started"] = True
                     st.session_state["current_question"] = 0
                     st.session_state["show_result"] = False
-                    st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
+                    st.session_state["selected_answers"] = {i: [] for i in range(len(themes[theme]))}
                     st.rerun()
-            else:
-                st.warning("⚠️ В этой теме пока нет вопросов. Проверьте, правильно ли заголовки идут перед таблицами.")
+        else:
+            # Размещаем кнопку "Вернуться к выбору темы" ВВЕРХУ рядом с заголовком темы
+            col1, col2 = st.columns([5, 1])
+            with col2:
+                if st.button("🔙 Вернуться к выбору темы"):
+                    if st.confirm_dialog(f"Вы уверены, что хотите выйти? Ваши ответы не сохранятся.", ["Да", "Отмена"]) == "Да":
+                        st.session_state["test_started"] = False
+                        st.session_state["selected_theme"] = None
+                        st.session_state["questions"] = []
+                        st.session_state["current_question"] = 0
+                        st.session_state["show_result"] = False
+                        st.session_state["selected_answers"] = {}
+                        st.rerun()
 
 # Проверяем, какие вопросы загружены для выбранной темы
-if "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
+if st.session_state.get("test_started", False) and "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
     q_idx = st.session_state["current_question"]
     question_data = st.session_state["questions"][q_idx]
 
@@ -126,7 +131,7 @@ if "questions" in st.session_state and len(st.session_state["questions"]) > 0 an
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col1:
-        if q_idx > 0:  # Убираем кнопку "Предыдущий вопрос" на первом вопросе
+        if q_idx > 0:  
             if st.button("⬅️ Предыдущий вопрос"):
                 st.session_state["current_question"] -= 1
                 st.rerun()
@@ -138,8 +143,9 @@ if "questions" in st.session_state and len(st.session_state["questions"]) > 0 an
                 st.rerun()
         else:
             if st.button("✅ Завершить тест"):
-                st.session_state["show_result"] = True
-                st.rerun()
+                if st.confirm_dialog("Вы уверены, что хотите завершить тест?", ["Да", "Отмена"]) == "Да":
+                    st.session_state["show_result"] = True
+                    st.rerun()
 
 # Отображение результата теста после завершения
 if st.session_state.get("show_result", False):
@@ -148,7 +154,6 @@ if st.session_state.get("show_result", False):
     total_questions = len(st.session_state["questions"])
     correct_count = 0
 
-    # Подсчет правильных ответов ТОЛЬКО после нажатия "Завершить тест"
     for idx, question in enumerate(st.session_state["questions"]):
         correct_set = set(question["correct"])
         selected_set = set(st.session_state["selected_answers"].get(idx, []))
@@ -159,6 +164,7 @@ if st.session_state.get("show_result", False):
     st.write(f"📊 Ваш результат: **{correct_count} из {total_questions}** правильных ответов.")  
 
     if st.button("Пройти снова"):
+        st.session_state["test_started"] = False
         st.session_state["selected_theme"] = None
         st.session_state["questions"] = []
         st.session_state["current_question"] = 0
