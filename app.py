@@ -12,14 +12,12 @@ def extract_questions_from_tables(doc):
     for table in doc.tables:
         rows = table.rows
         if len(rows) < 2:
-            continue  # Пропускаем таблицы без данных
+            continue  # Пропускаем пустые таблицы
 
-        # Определяем, где какие данные (проверяем заголовки)
         headers = [cell.text.strip().lower() for cell in rows[0].cells]
         if "текст вопроса" not in headers or "варианты ответов" not in headers:
-            continue  # Пропускаем таблицы, если они не подходят
+            continue  # Пропускаем таблицы без заголовков
 
-        # Индексы колонок
         question_idx = headers.index("текст вопроса")
         answers_idx = headers.index("варианты ответов")
         correct_idx = headers.index("эталон") if "эталон" in headers else None
@@ -33,7 +31,7 @@ def extract_questions_from_tables(doc):
             answer_text = row.cells[answers_idx].text.strip()
             correct_text = row.cells[correct_idx].text.strip() if correct_idx else ""
 
-            if question_text:  # Новый вопрос
+            if question_text:  # Если новая строка с вопросом
                 if current_question and answers:
                     questions.append({
                         "question": current_question,
@@ -45,12 +43,12 @@ def extract_questions_from_tables(doc):
                 correct_answer = None
 
             if answer_text:
-                answers.append(answer_text)
+                answer_options = answer_text.split("\n")  # Разбиваем варианты ответов по строкам
+                answers.extend([a.strip() for a in answer_options if a.strip()])
 
-            if correct_text:  # Запоминаем правильный ответ
-                correct_answer = answer_text
+            if correct_text:  # Если есть правильный ответ
+                correct_answer = correct_text.strip()
 
-        # Добавляем последний вопрос
         if current_question and answers:
             questions.append({
                 "question": current_question,
@@ -83,11 +81,9 @@ if "questions" in st.session_state and "current_question" in st.session_state:
     selected_answer = st.radio("Выберите ответ:", question_data["answers"])
 
     if st.button("Ответить"):
-        # Проверяем правильность ответа
         if selected_answer == question_data["correct"]:
             st.session_state["score"] += 1
 
-        # Переход к следующему вопросу
         if q_idx + 1 < len(st.session_state["questions"]):
             st.session_state["current_question"] += 1
             st.rerun()
