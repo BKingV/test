@@ -7,73 +7,50 @@ st.title("📄 Онлайн-тестирование по темам")
 uploaded_file = st.file_uploader("Загрузите Word-файл с тестами", type=["docx"])
 
 def extract_themes_and_questions(doc):
-    """Извлекает темы, подтемы и вопросы, начиная обработку с первой темы, после которой идет таблица"""
+    """Извлекает темы, подтемы и вопросы, начиная обработку только с первой темы, после которой идет таблица"""
     themes = {}
-    st.write("📌 Количество таблиц в документе:", len(doc.tables))  # Проверяем количество таблиц 
+
+    st.write("📌 Количество таблиц в документе:", len(doc.tables))  # Проверяем количество таблиц
+
     # Берем последнюю таблицу, так как в ней находятся подтемы
     table = doc.tables[-1]
-    # Выводим каждую строку отдельно, чтобы увидеть реальное содержимое таблицы
-    for i, row in enumerate(table.rows):
-        row_data = [cell.text.strip() for cell in row.cells]
-        st.write(f"📌 Строка {i}:", row_data)  # Выводим данные строки
-    # Остальной код обработки таблицы остаётся без изменений
-    tables_iter = iter(doc.tables)
 
-    for para in doc.paragraphs:
-        text = para.text.strip()
+    st.write("📌 Содержимое последней таблицы:", [[cell.text for cell in row.cells] for row in table.rows])
 
-        if text.startswith("ТЕМА:"):
-            current_theme = text.replace("ТЕМА:", "").strip()
-            themes[current_theme] = []
+    current_subtheme = None  # Переменная для хранения текущей подтемы
 
-            try:
-                table = next(tables_iter)
-                headers = [cell.text.strip().lower() for cell in table.rows[0].cells]
-                if "текст вопроса" not in headers or "варианты ответов" not in headers:
-                    continue  
+    for row in table.rows[1:]:
+        first_cell_text = row.cells[0].text.strip()  # Первый столбец
+        question_text = row.cells[1].text.strip()  # Вопрос
+        answer_text = row.cells[2].text.strip()  # Вариант ответа
+        correct_text = row.cells[3].text.strip() if len(row.cells) > 3 else ""  # Правильный ответ
 
-                question_idx = headers.index("текст вопроса")
-                answers_idx = headers.index("варианты ответов")
-                correct_idx = headers.index("эталон") if "эталон" in headers else None
+        # Если строка содержит заголовок (подтему), обновляем current_subtheme
+        if first_cell_text and all(cell.text.strip() == first_cell_text for cell in row.cells):
+            current_subtheme = first_cell_text  # Сохраняем новую подтему
+            continue  # Пропускаем строку, не добавляя её в вопросы
 
-                current_subtheme = None  
+        # Если строка содержит вопрос, добавляем его с подтемой
+        if question_text:
+            question_data = {
+                "question": question_text,
+                "answers": [],
+                "correct": [],
+                "subtheme": current_subtheme  # Привязываем вопрос к текущей подтеме
+            }
+            themes.setdefault("Тема", []).append(question_data)
 
-                for row in table.rows[1:]:
-                    first_cell_text = row.cells[0].text.strip()
-                    question_text = row.cells[question_idx].text.strip()
-                    answer_text = row.cells[answers_idx].text.strip()
-                    correct_text = row.cells[correct_idx].text.strip() if correct_idx else ""
-
-                    # Если строка - заголовок, считаем ее подтемой
-                    if first_cell_text and not question_text and len(row.cells) == 1:
-                        current_subtheme = first_cell_text
-                        continue
-
-                    # Если строка содержит вопрос, добавляем его в тему и подтему
-                    if question_text:
-                        question_data = {
-                            "question": question_text,
-                            "answers": [],
-                            "correct": [],
-                            "subtheme": current_subtheme  # Привязываем вопрос к подтеме
-                        }
-                        themes[current_theme].append(question_data)
-
-                    if themes[current_theme] and "question" in themes[current_theme][-1]:
-                        themes[current_theme][-1]["answers"].append(answer_text)
-                        if correct_text:
-                            themes[current_theme][-1]["correct"].append(answer_text)
-
-            except StopIteration:
-                pass  
+        # Добавляем варианты ответов
+        if themes["Тема"] and "question" in themes["Тема"][-1]:
+            themes["Тема"][-1]["answers"].append(answer_text)
+            if correct_text:
+                themes["Тема"][-1]["correct"].append(answer_text)
 
     return themes
 
 if uploaded_file:
     doc = Document(uploaded_file)
     themes = extract_themes_and_questions(doc)
-    st.write("📌 Данные по темам:", themes)  # Вывод данных для отладки
-
 
     if not themes:
         st.warning("⚠️ Не удалось извлечь темы и вопросы. Проверьте формат документа.")
@@ -93,12 +70,10 @@ if uploaded_file:
             selected_theme = st.selectbox("Выберите тему", list(st.session_state["themes"].keys()), key="theme_select")
 
             # Получаем список подтем (уникальные заголовки)
-            st.write("📌 Все вопросы темы:", st.session_state["themes"][selected_theme])  # Покажем, какие есть вопросы и подтемы
             subthemes = list(set(q["subtheme"] for q in st.session_state["themes"][selected_theme] if q["subtheme"]))
 
             selected_subtheme = None
             if subthemes:
-                st.write("📌 Проверяем подтемы:", subthemes)  # Выводим список подтем
                 st.subheader("📂 Выберите подтему:")
                 selected_subtheme = st.selectbox("Выберите подтему", subthemes, key="subtheme_select")
 
