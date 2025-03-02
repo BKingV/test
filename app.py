@@ -78,6 +78,7 @@ if uploaded_file:
             st.session_state["test_started"] = False
             st.session_state["show_result"] = False
             st.session_state["selected_answers"] = {}
+            st.session_state["show_confirm_exit"] = False  # Добавляем состояние для окна подтверждения выхода
 
         if not st.session_state["test_started"]:  
             st.header("Выберите тему")
@@ -97,14 +98,26 @@ if uploaded_file:
             col1, col2 = st.columns([5, 1])
             with col2:
                 if st.button("🔙 Вернуться к выбору темы"):
-                    if st.confirm_dialog(f"Вы уверены, что хотите выйти? Ваши ответы не сохранятся.", ["Да", "Отмена"]) == "Да":
-                        st.session_state["test_started"] = False
-                        st.session_state["selected_theme"] = None
-                        st.session_state["questions"] = []
-                        st.session_state["current_question"] = 0
-                        st.session_state["show_result"] = False
-                        st.session_state["selected_answers"] = {}
-                        st.rerun()
+                    st.session_state["show_confirm_exit"] = True  # Открываем окно подтверждения выхода
+
+        # Окно подтверждения выхода
+        if st.session_state.get("show_confirm_exit", False):
+            st.warning("❓ Вы уверены, что хотите выйти? Ваши ответы не сохранятся.")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ Да, выйти"):
+                    st.session_state["test_started"] = False
+                    st.session_state["selected_theme"] = None
+                    st.session_state["questions"] = []
+                    st.session_state["current_question"] = 0
+                    st.session_state["show_result"] = False
+                    st.session_state["selected_answers"] = {}
+                    st.session_state["show_confirm_exit"] = False
+                    st.rerun()
+            with col2:
+                if st.button("❌ Отмена"):
+                    st.session_state["show_confirm_exit"] = False  # Закрываем окно подтверждения
+                    st.rerun()
 
 # Проверяем, какие вопросы загружены для выбранной темы
 if st.session_state.get("test_started", False) and "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
@@ -143,7 +156,7 @@ if st.session_state.get("test_started", False) and "questions" in st.session_sta
                 st.rerun()
         else:
             if st.button("✅ Завершить тест"):
-                if st.confirm_dialog("Вы уверены, что хотите завершить тест?", ["Да", "Отмена"]) == "Да":
+                if st.button("❓ Вы уверены, что хотите завершить тест?"):
                     st.session_state["show_result"] = True
                     st.rerun()
 
