@@ -25,9 +25,21 @@ def extract_blocks_and_questions(doc):
                 current_theme = text.replace("ТЕМА:", "").strip()
                 blocks[current_block][current_theme] = []
 
+    # Выводим найденные блоки и темы (отладка)
+    st.subheader("📋 Найденные блоки и темы:")
+    for block, themes in blocks.items():
+        st.write(f"🔹 **{block}**")
+        for theme in themes:
+            st.write(f"  - {theme}")
+
     # Обрабатываем таблицы, чтобы привязать вопросы к последней найденной теме
     for table in doc.tables:
+        st.write("🔹 **Обрабатываем таблицу**")  # Отладочный вывод
+        st.write(f"📌 Текущий блок: {current_block}")
+        st.write(f"📌 Текущая тема: {current_theme}")
+
         if not current_block or not current_theme:
+            st.warning("⚠️ Таблица найдена без привязанной темы! Проверьте структуру документа.")
             continue  # Пропускаем таблицу, если не найден блок или тема
 
         rows = table.rows
@@ -97,69 +109,5 @@ if uploaded_file:
                         st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
                         st.rerun()
                 else:
-                    st.warning("В этой теме пока нет вопросов.")
+                    st.warning("⚠️ В этой теме пока нет вопросов. Проверьте, правильно ли заголовки идут перед таблицами.")
 
-# Проверяем, какие вопросы загружены для выбранной темы
-if "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
-    q_idx = st.session_state["current_question"]
-    question_data = st.session_state["questions"][q_idx]
-
-    st.subheader(f"{st.session_state['selected_theme']} - Вопрос {q_idx + 1} из {len(st.session_state['questions'])}")
-    st.write(question_data["question"])
-
-    selected_answers = st.session_state["selected_answers"].get(q_idx, [])
-
-    for i, answer in enumerate(question_data["answers"]):
-        key = f"q{q_idx}_a{i}"
-        checked = answer in selected_answers
-        if st.checkbox(answer, key=key, value=checked):
-            if answer not in selected_answers:
-                selected_answers.append(answer)
-        else:
-            if answer in selected_answers:
-                selected_answers.remove(answer)
-
-    st.session_state["selected_answers"][q_idx] = selected_answers
-
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    with col1:
-        if st.button("⬅️ Предыдущий вопрос") and q_idx > 0:
-            st.session_state["current_question"] -= 1
-            st.rerun()
-
-    with col3:
-        if q_idx + 1 < len(st.session_state["questions"]):
-            if st.button("➡️ Следующий вопрос"):
-                st.session_state["current_question"] += 1
-                st.rerun()
-        else:
-            if st.button("✅ Завершить тест"):
-                st.session_state["show_result"] = True
-                st.rerun()
-
-# Отображение результата теста после завершения
-if st.session_state.get("show_result", False):
-    st.success("✅ Тест завершен!")
-
-    total_questions = len(st.session_state["questions"])
-    correct_count = 0
-
-    # Подсчет правильных ответов ТОЛЬКО после нажатия "Завершить тест"
-    for idx, question in enumerate(st.session_state["questions"]):
-        correct_set = set(question["correct"])
-        selected_set = set(st.session_state["selected_answers"].get(idx, []))
-
-        if selected_set == correct_set:
-            correct_count += 1
-
-    st.write(f"📊 Ваш результат: **{correct_count} из {total_questions}** правильных ответов.")  
-
-    if st.button("Пройти снова"):
-        st.session_state["selected_block"] = None
-        st.session_state["selected_theme"] = None
-        st.session_state["questions"] = []
-        st.session_state["current_question"] = 0
-        st.session_state["show_result"] = False
-        st.session_state["selected_answers"] = {}
-        st.rerun()
