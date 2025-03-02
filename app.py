@@ -36,16 +36,18 @@ def extract_themes_and_questions(doc):
                     answer_text = row.cells[answers_idx].text.strip()
                     correct_text = row.cells[correct_idx].text.strip() if correct_idx else ""
 
-                    if first_cell_text and not question_text:
+                    # Если строка - заголовок, считаем ее подтемой
+                    if first_cell_text and not question_text and len(row.cells) == 1:
                         current_subtheme = first_cell_text
                         continue
 
+                    # Если строка содержит вопрос, добавляем его в тему и подтему
                     if question_text:
                         question_data = {
                             "question": question_text,
                             "answers": [],
                             "correct": [],
-                            "subtheme": current_subtheme  
+                            "subtheme": current_subtheme  # Привязываем вопрос к подтеме
                         }
                         themes[current_theme].append(question_data)
 
@@ -80,7 +82,7 @@ if uploaded_file:
             st.subheader("📚 Выберите тему:")
             selected_theme = st.selectbox("Выберите тему", list(st.session_state["themes"].keys()), key="theme_select")
 
-            # Получаем список подтем
+            # Получаем список подтем (уникальные заголовки)
             subthemes = list(set(q["subtheme"] for q in st.session_state["themes"][selected_theme] if q["subtheme"]))
 
             selected_subtheme = None
@@ -104,16 +106,3 @@ if uploaded_file:
                 st.session_state["show_result"] = False
                 st.session_state["selected_answers"] = {}
                 st.rerun()
-
-        if st.session_state.get("test_started", False):
-            col1, col2 = st.columns([2, 8])
-            with col1:
-                if st.button("🔙 Вернуться к выбору темы"):
-                    st.session_state["test_started"] = False
-                    st.session_state["selected_theme"] = None
-                    st.session_state["selected_subtheme"] = None
-                    st.session_state["questions"] = []
-                    st.session_state["current_question"] = 0
-                    st.session_state["show_result"] = False
-                    st.session_state["selected_answers"] = {}
-                    st.rerun()
