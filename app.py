@@ -126,9 +126,10 @@ if "questions" in st.session_state and len(st.session_state["questions"]) > 0 an
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col1:
-        if st.button("⬅️ Предыдущий вопрос") and q_idx > 0:
-            st.session_state["current_question"] -= 1
-            st.rerun()
+        if q_idx > 0:  # Убираем кнопку "Предыдущий вопрос" на первом вопросе
+            if st.button("⬅️ Предыдущий вопрос"):
+                st.session_state["current_question"] -= 1
+                st.rerun()
 
     with col3:
         if q_idx + 1 < len(st.session_state["questions"]):
