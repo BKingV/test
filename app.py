@@ -24,7 +24,7 @@ def extract_questions_from_tables(doc):
 
         current_question = None
         answers = []
-        correct_answer = None
+        correct_answers = []
 
         for row in rows[1:]:  # Пропускаем заголовки
             question_text = row.cells[question_idx].text.strip()
@@ -37,24 +37,24 @@ def extract_questions_from_tables(doc):
                     questions.append({
                         "question": current_question,
                         "answers": answers,
-                        "correct": correct_answer
+                        "correct": correct_answers
                     })
                 current_question = question_text
                 answers = []
-                correct_answer = None
+                correct_answers = []
 
             if answer_text:
                 answers.append(answer_text)  # Добавляем новый вариант ответа
 
             if correct_text:  # Если есть правильный ответ
-                correct_answer = answer_text  # Запоминаем правильный вариант
+                correct_answers.append(answer_text)  # Запоминаем ВСЕ правильные ответы
 
         # Добавляем последний вопрос после прохода по всем строкам
         if current_question and answers:
             questions.append({
                 "question": current_question,
                 "answers": answers,
-                "correct": correct_answer
+                "correct": correct_answers
             })
 
     return questions
@@ -67,27 +67,54 @@ if uploaded_file:
         st.warning("Не удалось извлечь вопросы. Проверьте формат документа.")
     else:
         st.session_state["questions"] = questions
+        st.session_state["current_question"] = 0
+        st.session_state["score"] = 0
+        st.session_state["show_result"] = False
         st.success(f"Найдено {len(questions)} вопросов. Можно начинать тест!")
+
         if st.button("Начать тест"):
             st.session_state["current_question"] = 0
             st.session_state["score"] = 0
+            st.session_state["show_result"] = False
             st.rerun()
 
-# Отображение теста
-if "questions" in st.session_state and "current_question" in st.session_state:
+# Отображение теста с множественным выбором ответов
+if "questions" in st.session_state and "current_question" in st.session_state and not st.session_state.get("show_result", False):
     q_idx = st.session_state["current_question"]
     question_data = st.session_state["questions"][q_idx]
 
     st.subheader(question_data["question"])
-    selected_answer = st.radio("Выберите ответ:", question_data["answers"])
+    
+    selected_answers = []
+    for answer in question_data["answers"]:
+        checked = st.checkbox(answer, key=f"q{q_idx}_{answer}")
+        if checked:
+            selected_answers.append(answer)
 
     if st.button("Ответить"):
-        if selected_answer == question_data["correct"]:
-            st.session_state["score"] += 1
+        if selected_answers:  # Если выбраны ответы
+            correct_set = set(question_data["correct"])
+            selected_set = set(selected_answers)
 
-        if q_idx + 1 < len(st.session_state["questions"]):
-            st.session_state["current_question"] += 1
-            st.rerun()
-        else:
-            st.success("Тест завершен!")
-            st.write(f"Вы ответили правильно на {st.session_state['score']} из {len(st.session_state['questions'])} вопросов.")
+            if selected_set == correct_set:
+                st.session_state["score"] += 1
+
+            if q_idx + 1 < len(st.session_state["questions"]):
+                st.session_state["current_question"] += 1
+                st.rerun()
+            else:
+                st.session_state["show_result"] = True
+                st.rerun()
+
+# Отображение результата теста
+if st.session_state.get("show_result", False):
+    st.success("✅ Тест завершен!")
+    total_questions = len(st.session_state["questions"])
+    score = st.session_state["score"]
+    st.write(f"📊 Ваш результат: **{score} из {total_questions}** правильных ответов.")
+
+    if st.button("Пройти снова"):
+        st.session_state["current_question"] = 0
+        st.session_state["score"] = 0
+        st.session_state["show_result"] = False
+        st.rerun()
