@@ -1,7 +1,7 @@
 import streamlit as st
 from docx import Document
 
-st.title("📄 Онлайн-тестирование из Word-файла")
+st.title("📄 Онлайн-тестирование по блокам и темам")
 
 uploaded_file = st.file_uploader("Загрузите Word-файл с тестами", type=["docx"])
 
@@ -91,6 +91,12 @@ if uploaded_file:
                     st.session_state["show_result"] = False
                     st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
                     st.rerun()
+
+# Проверяем, какие вопросы загружены для выбранной темы
+if "questions" in st.session_state and len(st.session_state["questions"]) > 0:
+    st.subheader(f"📋 Вопросы в теме: {st.session_state['selected_theme']}")
+    for q in st.session_state["questions"]:
+        st.write(f"❓ {q['question']}")
 
 # Отображение теста по выбранной теме
 if "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
