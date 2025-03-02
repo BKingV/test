@@ -81,24 +81,21 @@ if uploaded_file:
 
             if theme:
                 st.session_state["selected_theme"] = theme
-                st.session_state["questions"] = blocks[block][theme]
-                st.session_state["current_question"] = 0
-                st.session_state["show_result"] = False
-                st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
 
-                if st.button("Начать тест"):
-                    st.session_state["current_question"] = 0
-                    st.session_state["show_result"] = False
+                # Проверяем, есть ли вопросы в теме
+                if len(blocks[block][theme]) > 0:
+                    st.session_state["questions"] = blocks[block][theme]
                     st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
-                    st.rerun()
+
+                    if st.button("Начать тест"):
+                        st.session_state["current_question"] = 0
+                        st.session_state["show_result"] = False
+                        st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
+                        st.rerun()
+                else:
+                    st.warning("В этой теме пока нет вопросов.")
 
 # Проверяем, какие вопросы загружены для выбранной темы
-if "questions" in st.session_state and len(st.session_state["questions"]) > 0:
-    st.subheader(f"📋 Вопросы в теме: {st.session_state['selected_theme']}")
-    for q in st.session_state["questions"]:
-        st.write(f"❓ {q['question']}")
-
-# Отображение теста по выбранной теме
 if "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
     q_idx = st.session_state["current_question"]
     question_data = st.session_state["questions"][q_idx]
