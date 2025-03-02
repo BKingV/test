@@ -11,7 +11,7 @@ def extract_themes_and_questions(doc):
 
     st.write("📌 Количество таблиц в документе:", len(doc.tables))  # Проверяем количество таблиц
 
-    # Ищем первую тему в документе
+    # Получаем первую тему в документе
     current_theme = None
     for para in doc.paragraphs:
         text = para.text.strip()
@@ -19,44 +19,46 @@ def extract_themes_and_questions(doc):
             current_theme = text.replace("ТЕМА:", "").strip()
             break  # Берём только первую найденную тему
 
+    # Если темы нет, используем "Неизвестная тема"
     if not current_theme:
-        current_theme = "Неизвестная тема"  # Если не нашли тему, используем заглушку
+        current_theme = "Неизвестная тема"
 
-    st.write("📌 Найденная тема:", current_theme)  # Проверяем, какое название темы найдено
+    st.write("📌 Найденная тема:", current_theme)  # Выводим тему для отладки
 
     # Берем последнюю таблицу, так как в ней находятся подтемы и вопросы
     table = doc.tables[-1]
 
-    # Выводим отладочную информацию о содержимом таблицы
+    # Выводим каждую строку таблицы для проверки
     for i, row in enumerate(table.rows):
         row_data = [cell.text.strip() for cell in row.cells]
-        st.write(f"📌 Строка {i}:", row_data)  # Выводим данные строки
+        st.write(f"📌 Строка {i}:", row_data)  
 
     current_subtheme = None  # Переменная для хранения текущей подтемы
 
-    for row in table.rows[1:]:
-        first_cell_text = row.cells[0].text.strip()  # Первый столбец
-        question_text = row.cells[1].text.strip()  # Вопрос
-        answer_text = row.cells[2].text.strip()  # Вариант ответа
-        correct_text = row.cells[3].text.strip() if len(row.cells) > 3 else ""  # Правильный ответ
+    for row in table.rows[2:]:  # Пропускаем заголовок
+        row_data = [cell.text.strip() for cell in row.cells]
 
-        # Если строка содержит заголовок (подтему), обновляем current_subtheme
-        if first_cell_text and all(cell.text.strip() == first_cell_text for cell in row.cells):
-            current_subtheme = first_cell_text  # Сохраняем новую подтему
+        # Проверяем, является ли строка заголовком (подтемой)
+        if len(set(row_data)) == 1 and row_data[0]:  # Если во всей строке один и тот же текст
+            current_subtheme = row_data[0]
             continue  # Пропускаем строку, не добавляя её в вопросы
 
-        # Если строка содержит вопрос, добавляем его с подтемой
-        if question_text:
+        # Проверяем, содержит ли строка вопрос (не пустая и не заголовок)
+        if len(row_data) >= 2 and row_data[1] and row_data[2]:  
+            question_text = row_data[1]
+            answer_text = row_data[2]
+            correct_text = row_data[3] if len(row_data) > 3 else ""
+
+            # Добавляем вопрос в список
             question_data = {
                 "question": question_text,
                 "answers": [],
                 "correct": [],
-                "subtheme": current_subtheme  # Привязываем вопрос к текущей подтеме
+                "subtheme": current_subtheme
             }
             themes.setdefault(current_theme, []).append(question_data)
 
-        # Добавляем варианты ответов
-        if themes[current_theme] and "question" in themes[current_theme][-1]:
+            # Добавляем варианты ответов
             themes[current_theme][-1]["answers"].append(answer_text)
             if correct_text:
                 themes[current_theme][-1]["correct"].append(answer_text)
@@ -99,7 +101,7 @@ if uploaded_file:
                 st.session_state["selected_theme"] = selected_theme
                 st.session_state["selected_subtheme"] = selected_subtheme
 
-                # Если выбрана подтема – берем только ее вопросы
+                # Если выбрана подтема – берем только её вопросы
                 if selected_subtheme:
                     st.session_state["questions"] = [q for q in st.session_state["themes"][selected_theme] if q["subtheme"] == selected_subtheme]
                 else:
