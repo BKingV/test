@@ -64,7 +64,7 @@ def extract_themes_and_questions(doc):
 if uploaded_file:
     doc = Document(uploaded_file)
     themes = extract_themes_and_questions(doc)
-        st.write("📌 Данные по темам:", themes)  # Вывод данных для отладки
+    st.write("📌 Данные по темам:", themes)  # Вывод данных для отладки
 
 
     if not themes:
