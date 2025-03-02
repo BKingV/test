@@ -89,6 +89,7 @@ if uploaded_file:
 
             selected_subtheme = None
             if subthemes:
+                st.write("📌 Проверяем подтемы:", subthemes)  # Выводим список подтем
                 st.subheader("📂 Выберите подтему:")
                 selected_subtheme = st.selectbox("Выберите подтему", subthemes, key="subtheme_select")
 
