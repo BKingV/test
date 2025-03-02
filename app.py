@@ -161,6 +161,7 @@ if st.session_state.get("show_result", False):
             padding: 10px;
             border: 1px solid #ddd;
             text-align: left;
+            vertical-align: top;
         }
         th {
             background-color: #f4f4f4;
@@ -168,10 +169,25 @@ if st.session_state.get("show_result", False):
         .correct {
             background-color: #d4edda; /* Зеленый */
             color: #155724;
+            font-weight: bold;
         }
         .incorrect {
             background-color: #f8d7da; /* Красный */
             color: #721c24;
+            font-weight: bold;
+        }
+        .short-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+            display: inline-block;
+        }
+        .show-more {
+            cursor: pointer;
+            color: blue;
+            text-decoration: underline;
+            font-size: 14px;
         }
     </style>
     <table>
@@ -191,11 +207,18 @@ if st.session_state.get("show_result", False):
 
         is_correct = set(user_answers) == set(correct_answers)
         row_class = "correct" if is_correct else "incorrect"
+
+        # Обрезаем длинный текст
+        def format_text(text):
+            if len(text) > 100:
+                return f'<span class="short-text">{text[:100]}...</span> <span class="show-more" onclick="this.previousElementSibling.style.whiteSpace=\'normal\'; this.previousElementSibling.style.maxWidth=\'none\'; this.style.display=\'none\'">Показать полностью</span>'
+            return text
+
         results_html += f"""
         <tr class="{row_class}">
-            <td>{question_data["question"]}</td>
-            <td>{", ".join(user_answers) if user_answers else "—"}</td>
-            <td>{", ".join(correct_answers)}</td>
+            <td>{format_text(question_data["question"])}</td>
+            <td>{format_text(", ".join(user_answers) if user_answers else "—")}</td>
+            <td>{format_text(", ".join(correct_answers))}</td>
         </tr>
         """
 
@@ -215,4 +238,5 @@ if st.session_state.get("show_result", False):
         st.session_state["show_result"] = False
         st.session_state["selected_answers"] = {}
         st.rerun()
+
 
