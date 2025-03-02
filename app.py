@@ -65,7 +65,7 @@ if uploaded_file:
     themes = extract_themes_and_questions(doc)
 
     if not themes:
-        st.warning("Не удалось извлечь темы и вопросы. Проверьте формат документа.")
+        st.warning("⚠️ Не удалось извлечь темы и вопросы. Проверьте формат документа.")
     else:
         if "themes" not in st.session_state:
             st.session_state["themes"] = themes
@@ -76,12 +76,24 @@ if uploaded_file:
             st.session_state["show_result"] = False
             st.session_state["selected_answers"] = {}
 
-        if st.session_state.get("test_started", False):
-            # --- Измененный заголовок темы ---
-            st.markdown(
-                f"<h4 style='color: #666666; font-size: 18px; font-weight: bold;'>{st.session_state['selected_theme']}</h4>",
-                unsafe_allow_html=True
-            )
+        # Если тест НЕ начался, показываем выбор темы и кнопку "Начать тест"
+        if not st.session_state["test_started"]:
+            st.header("Выберите тему")
+
+            if themes:
+                theme_list = list(themes.keys())
+                selected = st.selectbox("Тема:", theme_list, index=0)
+                st.session_state["selected_theme"] = selected
+
+                if st.button("Начать тест"):
+                    st.session_state["test_started"] = True
+                    st.session_state["current_question"] = 0
+                    st.session_state["show_result"] = False
+                    st.session_state["questions"] = st.session_state["themes"][selected]
+                    st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
+                    st.rerun()
+            else:
+                st.warning("⚠️ В файле нет доступных тем. Проверьте формат документа.")
 
 # Проверяем, какие вопросы загружены для выбранной темы
 if st.session_state.get("test_started", False) and "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
