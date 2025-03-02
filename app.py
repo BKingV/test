@@ -53,6 +53,7 @@ def extract_themes_and_questions(doc):
 
     return themes
 
+# Обработка загруженного файла
 if uploaded_file:
     doc = Document(uploaded_file)
     themes = extract_themes_and_questions(doc)
@@ -69,6 +70,21 @@ if uploaded_file:
             st.session_state["show_result"] = False
             st.session_state["selected_answers"] = {}
 
+        # Показываем выбор темы, если тест еще не начат
+        if not st.session_state.get("test_started", False):
+            st.subheader("📚 Выберите тему для тестирования:")
+            selected_theme = st.selectbox("Выберите тему", list(st.session_state["themes"].keys()))
+
+            if st.button("▶️ Начать тест"):
+                st.session_state["selected_theme"] = selected_theme
+                st.session_state["questions"] = st.session_state["themes"][selected_theme]
+                st.session_state["current_question"] = 0
+                st.session_state["test_started"] = True
+                st.session_state["show_result"] = False
+                st.session_state["selected_answers"] = {}
+                st.rerun()
+
+        # --- Показываем кнопку "Вернуться к выбору темы" ---
         if st.session_state.get("test_started", False):
             col1, col2 = st.columns([2, 8])
             with col1:
@@ -81,7 +97,8 @@ if uploaded_file:
                     st.session_state["selected_answers"] = {}
                     st.rerun()
 
-        if st.session_state.get("test_started", False) and "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
+        # --- Отображаем вопросы ---
+        if st.session_state.get("test_started", False) and not st.session_state.get("show_result", False):
             q_idx = st.session_state["current_question"]
             question_data = st.session_state["questions"][q_idx]
 
