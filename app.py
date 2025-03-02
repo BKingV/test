@@ -71,6 +71,7 @@ if uploaded_file:
             st.session_state["current_question"] = 0
             st.session_state["score"] = 0
             st.session_state["show_result"] = False
+            st.session_state["selected_answers"] = {i: [] for i in range(len(questions))}  # Сохраняем выбранные ответы
 
         st.success(f"Найдено {len(questions)} вопросов. Можно начинать тест!")
 
@@ -78,6 +79,7 @@ if uploaded_file:
             st.session_state["current_question"] = 0
             st.session_state["score"] = 0
             st.session_state["show_result"] = False
+            st.session_state["selected_answers"] = {i: [] for i in range(len(questions))}
             st.rerun()
 
 # Отображение теста с кнопками "Предыдущий вопрос" и "Следующий вопрос"
@@ -87,15 +89,19 @@ if "questions" in st.session_state and "current_question" in st.session_state an
 
     st.subheader(question_data["question"])
     
-    selected_answers = []
+    selected_answers = st.session_state["selected_answers"].get(q_idx, [])
+
     for i, answer in enumerate(question_data["answers"]):
         key = f"q{q_idx}_a{i}"  # Уникальный ключ для каждого чекбокса
-        if key not in st.session_state:
-            st.session_state[key] = False  # Инициализируем состояние чекбоксов
-        
-        checked = st.checkbox(answer, key=key)
-        if checked:
-            selected_answers.append(answer)
+        checked = answer in selected_answers
+        if st.checkbox(answer, key=key, value=checked):
+            if answer not in selected_answers:
+                selected_answers.append(answer)
+        else:
+            if answer in selected_answers:
+                selected_answers.remove(answer)
+
+    st.session_state["selected_answers"][q_idx] = selected_answers
 
     col1, col2, col3 = st.columns([1, 2, 1])
     
@@ -116,11 +122,6 @@ if "questions" in st.session_state and "current_question" in st.session_state an
             # Переходим к следующему вопросу
             if q_idx + 1 < len(st.session_state["questions"]):
                 st.session_state["current_question"] += 1
-
-                # Сброс состояния чекбоксов
-                for i in range(len(question_data["answers"])):
-                    del st.session_state[f"q{q_idx}_a{i}"]
-
                 st.rerun()
             else:
                 st.session_state["show_result"] = True
@@ -137,10 +138,5 @@ if st.session_state.get("show_result", False):
         st.session_state["current_question"] = 0
         st.session_state["score"] = 0
         st.session_state["show_result"] = False
-        
-        # Сброс чекбоксов перед новым тестом
-        for key in list(st.session_state.keys()):
-            if key.startswith("q"):
-                del st.session_state[key]
-
+        st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
         st.rerun()
