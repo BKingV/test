@@ -6,21 +6,21 @@ st.title("📄 Онлайн-тестирование по темам")
 uploaded_file = st.file_uploader("Загрузите Word-файл с тестами", type=["docx"])
 
 def extract_themes_and_questions(doc):
-    """Извлекает темы и вопросы, начиная обработку только с первой темы, за которой идет таблица"""
+    """Извлекает темы и вопросы, начиная обработку только с первой темы, после которой идет таблица"""
     themes = {}
     current_theme = None
-    processing_started = False  # Флаг, который говорит, что можно начинать обработку
+    processing_started = False  # Начинаем обработку только после первой найденной "ТЕМА:"
+    tables_iter = iter(doc.tables)  # Создаем итератор по таблицам
 
-    paragraphs = [para.text.strip() for para in doc.paragraphs if para.text.strip()]  # Убираем пустые строки
-    tables = iter(doc.tables)  # Создаем итератор по таблицам
+    for para in doc.paragraphs:
+        text = para.text.strip()
 
-    for text in paragraphs:
         if text.startswith("ТЕМА:"):  
             current_theme = text.replace("ТЕМА:", "").strip()
 
             try:
                 # Проверяем, есть ли таблица сразу после темы
-                table = next(tables)  
+                table = next(tables_iter)  
                 themes[current_theme] = []
 
                 rows = table.rows
@@ -42,8 +42,8 @@ def extract_themes_and_questions(doc):
 
                     themes[current_theme].append({
                         "question": question_text,
-                        "answers": answer_text.split("\n"),  # Разделяем ответы по строкам
-                        "correct": correct_text.split("\n")  # Разделяем правильные ответы
+                        "answers": answer_text.split("\n") if answer_text else [],  # Разделяем ответы
+                        "correct": correct_text.split("\n") if correct_text else []  # Разделяем правильные ответы
                     })
 
                 processing_started = True  # Теперь можно обрабатывать темы
@@ -90,3 +90,67 @@ if uploaded_file:
                     st.rerun()
             else:
                 st.warning("⚠️ В этой теме пока нет вопросов. Проверьте, правильно ли заголовки идут перед таблицами.")
+
+# Проверяем, какие вопросы загружены для выбранной темы
+if "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
+    q_idx = st.session_state["current_question"]
+    question_data = st.session_state["questions"][q_idx]
+
+    st.subheader(f"{st.session_state['selected_theme']} - Вопрос {q_idx + 1} из {len(st.session_state['questions'])}")
+    st.write(question_data["question"])
+
+    selected_answers = st.session_state["selected_answers"].get(q_idx, [])
+
+    for i, answer in enumerate(question_data["answers"]):
+        key = f"q{q_idx}_a{i}"
+        checked = answer in selected_answers
+        if st.checkbox(answer, key=key, value=checked):
+            if answer not in selected_answers:
+                selected_answers.append(answer)
+        else:
+            if answer in selected_answers:
+                selected_answers.remove(answer)
+
+    st.session_state["selected_answers"][q_idx] = selected_answers
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col1:
+        if st.button("⬅️ Предыдущий вопрос") and q_idx > 0:
+            st.session_state["current_question"] -= 1
+            st.rerun()
+
+    with col3:
+        if q_idx + 1 < len(st.session_state["questions"]):
+            if st.button("➡️ Следующий вопрос"):
+                st.session_state["current_question"] += 1
+                st.rerun()
+        else:
+            if st.button("✅ Завершить тест"):
+                st.session_state["show_result"] = True
+                st.rerun()
+
+# Отображение результата теста после завершения
+if st.session_state.get("show_result", False):
+    st.success("✅ Тест завершен!")
+
+    total_questions = len(st.session_state["questions"])
+    correct_count = 0
+
+    # Подсчет правильных ответов ТОЛЬКО после нажатия "Завершить тест"
+    for idx, question in enumerate(st.session_state["questions"]):
+        correct_set = set(question["correct"])
+        selected_set = set(st.session_state["selected_answers"].get(idx, []))
+
+        if selected_set == correct_set:
+            correct_count += 1
+
+    st.write(f"📊 Ваш результат: **{correct_count} из {total_questions}** правильных ответов.")  
+
+    if st.button("Пройти снова"):
+        st.session_state["selected_theme"] = None
+        st.session_state["questions"] = []
+        st.session_state["current_question"] = 0
+        st.session_state["show_result"] = False
+        st.session_state["selected_answers"] = {}
+        st.rerun()
