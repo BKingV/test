@@ -75,62 +75,70 @@ if uploaded_file:
             st.session_state["test_started"] = False
             st.session_state["show_result"] = False
             st.session_state["selected_answers"] = {}
+            st.session_state["show_confirm_exit"] = False  # Для окна подтверждения выхода
 
-        # Если тест НЕ начался, показываем выбор темы и кнопку "Начать тест"
-        if not st.session_state["test_started"]:
-            st.header("Выберите тему")
+        # --- Показываем кнопку "Вернуться к выбору темы" вверху ---
+        if st.session_state.get("test_started", False):
+            col1, col2 = st.columns([2, 8])
+            with col1:
+                if st.button("🔙 Вернуться к выбору темы"):
+                    st.session_state["show_confirm_exit"] = True
 
-            if themes:
-                theme_list = list(themes.keys())
-                selected = st.selectbox("Тема:", theme_list, index=0)
-                st.session_state["selected_theme"] = selected
-
-                if st.button("Начать тест"):
-                    st.session_state["test_started"] = True
+        # --- Окно подтверждения выхода ---
+        if st.session_state.get("show_confirm_exit", False):
+            st.warning("❓ Вы уверены, что хотите выйти? Ваши ответы не сохранятся.")
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("✅ Да, выйти"):
+                    st.session_state["test_started"] = False
+                    st.session_state["selected_theme"] = None
+                    st.session_state["questions"] = []
                     st.session_state["current_question"] = 0
                     st.session_state["show_result"] = False
-                    st.session_state["questions"] = st.session_state["themes"][selected]
-                    st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
+                    st.session_state["selected_answers"] = {}
+                    st.session_state["show_confirm_exit"] = False
                     st.rerun()
-            else:
-                st.warning("⚠️ В файле нет доступных тем. Проверьте формат документа.")
+            with c2:
+                if st.button("❌ Отмена"):
+                    st.session_state["show_confirm_exit"] = False
+                    st.rerun()
 
-# Проверяем, какие вопросы загружены для выбранной темы
-if st.session_state.get("test_started", False) and "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
-    q_idx = st.session_state["current_question"]
-    question_data = st.session_state["questions"][q_idx]
+        # --- Отображаем вопросы ---
+        if st.session_state.get("test_started", False) and "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
+            q_idx = st.session_state["current_question"]
+            question_data = st.session_state["questions"][q_idx]
 
-    st.subheader(f"Вопрос {q_idx + 1} из {len(st.session_state['questions'])}")
-    st.write(question_data["question"])
+            st.subheader(f"Вопрос {q_idx + 1} из {len(st.session_state['questions'])}")
+            st.write(question_data["question"])
 
-    selected_answers = st.session_state["selected_answers"].get(q_idx, [])
+            selected_answers = st.session_state["selected_answers"].get(q_idx, [])
 
-    for i, answer in enumerate(question_data["answers"]):
-        key = f"q{q_idx}_a{i}"
-        checked = answer in selected_answers
-        if st.checkbox(answer, key=key, value=checked):
-            if answer not in selected_answers:
-                selected_answers.append(answer)
-        else:
-            if answer in selected_answers:
-                selected_answers.remove(answer)
+            for i, answer in enumerate(question_data["answers"]):
+                key = f"q{q_idx}_a{i}"
+                checked = answer in selected_answers
+                if st.checkbox(answer, key=key, value=checked):
+                    if answer not in selected_answers:
+                        selected_answers.append(answer)
+                else:
+                    if answer in selected_answers:
+                        selected_answers.remove(answer)
 
-    st.session_state["selected_answers"][q_idx] = selected_answers
+            st.session_state["selected_answers"][q_idx] = selected_answers
 
-    col1, col2, col3 = st.columns([1, 2, 1])
-    
-    with col1:
-        if q_idx > 0:  
-            if st.button("⬅️ Предыдущий вопрос"):
-                st.session_state["current_question"] -= 1
-                st.rerun()
+            col1, col2, col3 = st.columns([1, 2, 1])
+            
+            with col1:
+                if q_idx > 0:  
+                    if st.button("⬅️ Предыдущий вопрос"):
+                        st.session_state["current_question"] -= 1
+                        st.rerun()
 
-    with col3:
-        if q_idx + 1 < len(st.session_state["questions"]):
-            if st.button("➡️ Следующий вопрос"):
-                st.session_state["current_question"] += 1
-                st.rerun()
-        else:
-            if st.button("✅ Завершить тест"):
-                st.session_state["show_result"] = True
-                st.rerun()
+            with col3:
+                if q_idx + 1 < len(st.session_state["questions"]):
+                    if st.button("➡️ Следующий вопрос"):
+                        st.session_state["current_question"] += 1
+                        st.rerun()
+                else:
+                    if st.button("✅ Завершить тест"):
+                        st.session_state["show_result"] = True
+                        st.rerun()
