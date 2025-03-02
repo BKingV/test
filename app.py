@@ -80,7 +80,7 @@ if uploaded_file:
             st.session_state["show_result"] = False
             st.rerun()
 
-# Отображение теста с множественным выбором ответов
+# Отображение теста с кнопками "Предыдущий вопрос" и "Следующий вопрос"
 if "questions" in st.session_state and "current_question" in st.session_state and not st.session_state.get("show_result", False):
     q_idx = st.session_state["current_question"]
     question_data = st.session_state["questions"][q_idx]
@@ -97,26 +97,34 @@ if "questions" in st.session_state and "current_question" in st.session_state an
         if checked:
             selected_answers.append(answer)
 
-    if st.button("Ответить"):
-        correct_set = set(question_data["correct"])
-        selected_set = set(selected_answers)
-
-        # Начисляем балл только если выбраны ТОЛЬКО правильные ответы
-        if selected_set == correct_set:
-            st.session_state["score"] += 1
-
-        # Всегда переходим к следующему вопросу
-        if q_idx + 1 < len(st.session_state["questions"]):
-            st.session_state["current_question"] += 1
-
-            # Сброс состояния чекбоксов
-            for i in range(len(question_data["answers"])):
-                del st.session_state[f"q{q_idx}_a{i}"]
-
-            st.rerun()  # Гарантированно обновляем страницу
-        else:
-            st.session_state["show_result"] = True
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col1:
+        if st.button("⬅️ Предыдущий вопрос") and q_idx > 0:
+            st.session_state["current_question"] -= 1
             st.rerun()
+
+    with col3:
+        if st.button("➡️ Следующий вопрос"):
+            correct_set = set(question_data["correct"])
+            selected_set = set(selected_answers)
+
+            # Начисляем балл только если выбраны ТОЛЬКО правильные ответы
+            if selected_set == correct_set:
+                st.session_state["score"] += 1
+
+            # Переходим к следующему вопросу
+            if q_idx + 1 < len(st.session_state["questions"]):
+                st.session_state["current_question"] += 1
+
+                # Сброс состояния чекбоксов
+                for i in range(len(question_data["answers"])):
+                    del st.session_state[f"q{q_idx}_a{i}"]
+
+                st.rerun()
+            else:
+                st.session_state["show_result"] = True
+                st.rerun()
 
 # Отображение результата теста
 if st.session_state.get("show_result", False):
