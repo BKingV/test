@@ -92,21 +92,21 @@ if "questions" in st.session_state and "current_question" in st.session_state an
             selected_answers.append(answer)
 
     if st.button("Ответить"):
-    if not selected_answers:  # Если пользователь не выбрал ни одного ответа
-        st.warning("⚠️ Выберите хотя бы один вариант ответа перед продолжением!")
-    else:
-        correct_set = set(question_data["correct"])
-        selected_set = set(selected_answers)
-
-        if selected_set == correct_set:
-            st.session_state["score"] += 1
-
-        if q_idx + 1 < len(st.session_state["questions"]):
-            st.session_state["current_question"] += 1
-            st.rerun()  # Обновляем страницу, чтобы перейти к следующему вопросу
+        if not selected_answers:  # Если пользователь не выбрал ни одного ответа
+            st.warning("⚠️ Выберите хотя бы один вариант ответа перед продолжением!")
         else:
-            st.session_state["show_result"] = True
-            st.rerun()
+            correct_set = set(question_data["correct"])
+            selected_set = set(selected_answers)
+
+            if selected_set == correct_set:
+                st.session_state["score"] += 1
+
+            if q_idx + 1 < len(st.session_state["questions"]):
+                st.session_state["current_question"] += 1
+                st.rerun()  # Обновляем страницу, чтобы перейти к следующему вопросу
+            else:
+                st.session_state["show_result"] = True
+                st.rerun()
 
 # Отображение результата теста
 if st.session_state.get("show_result", False):
