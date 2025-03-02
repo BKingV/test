@@ -19,13 +19,17 @@ def extract_blocks_and_questions(doc):
         if style == "Heading 1":  # Если заголовок 1-го уровня - это блок
             current_block = text
             blocks[current_block] = {}
+            current_theme = None  # Сбрасываем текущую тему
         elif style == "Heading 2":  # Если заголовок 2-го уровня - это тема
             if current_block:
                 current_theme = text.replace("ТЕМА:", "").strip()
                 blocks[current_block][current_theme] = []
 
-    # Обрабатываем таблицы, чтобы привязать вопросы к темам
+    # Обрабатываем таблицы, чтобы привязать вопросы к последней найденной теме
     for table in doc.tables:
+        if not current_block or not current_theme:
+            continue  # Пропускаем таблицу, если не найден блок или тема
+
         rows = table.rows
         if len(rows) < 2:
             continue  # Пропускаем пустые таблицы
