@@ -1,57 +1,51 @@
-import streamlit as st
-import pandas as pd
-from docx import Document
-import io
+import docx
+import re
 
-def extract_questions_from_docx(file):
-    doc = Document(file)
-    data = []
-    block = ""
-    theme = ""
-    
-    for table in doc.tables:
-        rows = table.rows
-        if len(rows) < 2:
-            continue  # Пропускаем слишком маленькие таблицы
-        
-        question = ""
-        answers = []
-        correct_answers = []
-        
-        for row in rows[1:]:  # Пропускаем заголовок
-            cells = row.cells
-            
-            if len(cells) >= 4:
-                if cells[0].text.strip():  # Новый вопрос
-                    if question:
-                        data.append([block, theme, question, " | ".join(answers), " | ".join(correct_answers)])
-                    
-                    question = cells[1].text.strip()
-                    answers = []
-                    correct_answers = []
-                
-                answer = cells[2].text.strip()
-                answers.append(answer)
-                if 'Эталон' in cells[3].text.strip():
-                    correct_answers.append(answer)
-        
-        if question:
-            data.append([block, theme, question, " | ".join(answers), " | ".join(correct_answers)])
-    
-    return pd.DataFrame(data, columns=["Блок", "Тема", "Вопрос", "Варианты ответов", "Правильные ответы"])
+def load_questions(docx_path):
+    doc = docx.Document(docx_path)
+    questions = []
+    current_question = {}
+    for para in doc.paragraphs:
+        text = para.text.strip()
+        if not text:
+            continue
+        # Определение начала нового вопроса
+        match = re.match(r'^(\d+)\s+(.*)', text)
+        if match:
+            if current_question:
+                questions.append(current_question)
+                current_question = {}
+            current_question['number'] = match.group(1)
+            current_question['question'] = match.group(2)
+            current_question['options'] = []
+        elif 'Эталон' in text:
+            current_question['answer'] = text.split('Эталон')[0].strip()
+        else:
+            # Предполагается, что варианты ответов следуют после вопроса
+            current_question['options'].append(text)
+    if current_question:
+        questions.append(current_question)
+    return questions
 
-st.title("Извлечение вопросов из Word")
-uploaded_file = st.file_uploader("Загрузите файл .docx", type=["docx"])
+def conduct_test(questions):
+    score = 0
+    for q in questions:
+        print(f"\nВопрос {q['number']}: {q['question']}")
+        options = q['options']
+        for idx, option in enumerate(options, 1):
+            print(f"{idx}. {option}")
+        try:
+            answer = int(input("Ваш ответ (укажите номер варианта): "))
+            if options[answer - 1].lower() == q['answer'].lower():
+                print("Правильно!")
+                score += 1
+            else:
+                print(f"Неверно. Правильный ответ: {q['answer']}")
+        except (IndexError, ValueError):
+            print("Некорректный ввод. Перейдём к следующему вопросу.")
+    print(f"\nТест завершён. Ваш результат: {score}/{len(questions)}")
 
-if uploaded_file:
-    df = extract_questions_from_docx(uploaded_file)
-    st.write("### Извлечённые вопросы:")
-    st.dataframe(df)
-    
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name="Тест")
-        writer.close()
-    output.seek(0)
-    
-    st.download_button("Скачать Excel", data=output, file_name="test_questions.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+if __name__ == "__main__":
+    docx_file = "ЛЭИ ЦЭСТ (Алтухова) - 2025 (003).docx"
+    questions = load_questions(docx_file)
+    conduct_test(questions)
