@@ -16,11 +16,10 @@ def extract_themes_and_questions(doc):
 
         if text.startswith("ТЕМА:"):
             current_theme = text.replace("ТЕМА:", "").strip()
+            themes[current_theme] = []
 
             try:
                 table = next(tables_iter)
-                themes[current_theme] = []
-
                 headers = [cell.text.strip().lower() for cell in table.rows[0].cells]
                 if "текст вопроса" not in headers or "варианты ответов" not in headers:
                     continue  
@@ -29,24 +28,34 @@ def extract_themes_and_questions(doc):
                 answers_idx = headers.index("варианты ответов")
                 correct_idx = headers.index("эталон") if "эталон" in headers else None
 
-                current_question = None
+                current_subtheme = None  # Для хранения подтемы
 
                 for row in table.rows[1:]:
+                    first_cell_text = row.cells[0].text.strip()
                     question_text = row.cells[question_idx].text.strip()
                     answer_text = row.cells[answers_idx].text.strip()
                     correct_text = row.cells[correct_idx].text.strip() if correct_idx else ""
 
-                    if current_question is None or current_question["question"] != question_text:
-                        current_question = {
+                    # Проверяем, является ли строка подзаголовком (например, "Общие вопросы")
+                    if first_cell_text and not question_text:
+                        current_subtheme = first_cell_text
+                        continue
+
+                    # Если встречается вопрос, добавляем его в тему и подтему
+                    if question_text:
+                        question_data = {
                             "question": question_text,
                             "answers": [],
-                            "correct": []
+                            "correct": [],
+                            "subtheme": current_subtheme  # Сохраняем подтему
                         }
-                        themes[current_theme].append(current_question)
+                        themes[current_theme].append(question_data)
 
-                    current_question["answers"].append(answer_text)
-                    if correct_text:
-                        current_question["correct"].append(answer_text)
+                    # Добавляем варианты ответов к последнему вопросу
+                    if themes[current_theme] and "question" in themes[current_theme][-1]:
+                        themes[current_theme][-1]["answers"].append(answer_text)
+                        if correct_text:
+                            themes[current_theme][-1]["correct"].append(answer_text)
 
             except StopIteration:
                 pass  
