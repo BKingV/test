@@ -5,94 +5,82 @@ st.title("📄 Онлайн-тестирование из Word-файла")
 
 uploaded_file = st.file_uploader("Загрузите Word-файл с тестами", type=["docx"])
 
-def extract_questions_from_tables(doc):
-    """Извлекает вопросы и ответы из таблиц Word-документа"""
-    questions = []
+def extract_questions_from_docx(doc):
+    """Извлекает блоки, темы и вопросы из Word-файла"""
+    structure = {}
+    current_block = None
+    current_theme = None
 
-    for table in doc.tables:
-        rows = table.rows
-        if len(rows) < 2:
-            continue  # Пропускаем пустые таблицы
+    for para in doc.paragraphs:
+        text = para.text.strip()
 
-        headers = [cell.text.strip().lower() for cell in rows[0].cells]
-        if "текст вопроса" not in headers or "варианты ответов" not in headers:
-            continue  # Пропускаем таблицы без заголовков
+        if not text:
+            continue  # Пропускаем пустые строки
 
-        question_idx = headers.index("текст вопроса")
-        answers_idx = headers.index("варианты ответов")
-        correct_idx = headers.index("эталон") if "эталон" in headers else None
+        if text.startswith("Блок"):  # Если это новый блок
+            current_block = text
+            structure[current_block] = {}
+        elif text.startswith("Тема"):  # Если это новая тема в блоке
+            if current_block:
+                current_theme = text
+                structure[current_block][current_theme] = []
+        elif current_theme:  # Если это вопрос в текущей теме
+            structure[current_block][current_theme].append(text)
 
-        current_question = None
-        answers = []
-        correct_answers = []
-
-        for row in rows[1:]:  # Пропускаем заголовки
-            question_text = row.cells[question_idx].text.strip()
-            answer_text = row.cells[answers_idx].text.strip()
-            correct_text = row.cells[correct_idx].text.strip() if correct_idx else ""
-
-            if question_text and question_text != current_question:
-                # Если это новый вопрос, сохраняем предыдущий и начинаем новый
-                if current_question and answers:
-                    questions.append({
-                        "question": current_question,
-                        "answers": answers,
-                        "correct": correct_answers
-                    })
-                current_question = question_text
-                answers = []
-                correct_answers = []
-
-            if answer_text:
-                answers.append(answer_text)  # Добавляем новый вариант ответа
-
-            if correct_text:  # Если есть правильный ответ
-                correct_answers.append(answer_text)  # Запоминаем ВСЕ правильные ответы
-
-        # Добавляем последний вопрос после прохода по всем строкам
-        if current_question and answers:
-            questions.append({
-                "question": current_question,
-                "answers": answers,
-                "correct": correct_answers
-            })
-
-    return questions
+    return structure
 
 if uploaded_file:
     doc = Document(uploaded_file)
-    questions = extract_questions_from_tables(doc)
+    structure = extract_questions_from_docx(doc)
 
-    if not questions:
+    if not structure:
         st.warning("Не удалось извлечь вопросы. Проверьте формат документа.")
     else:
-        if "questions" not in st.session_state:
-            st.session_state["questions"] = questions
+        if "structure" not in st.session_state:
+            st.session_state["structure"] = structure
+            st.session_state["selected_block"] = None
+            st.session_state["selected_theme"] = None
+            st.session_state["questions"] = []
             st.session_state["current_question"] = 0
-            st.session_state["score"] = 0
             st.session_state["show_result"] = False
-            st.session_state["selected_answers"] = {i: [] for i in range(len(questions))}  # Сохраняем выбранные ответы
+            st.session_state["selected_answers"] = {}
 
-        st.success(f"Найдено {len(questions)} вопросов. Можно начинать тест!")
+        # Выбор блока
+        st.header("Выберите блок")
+        block = st.selectbox("Блок:", list(structure.keys()), index=0 if not st.session_state["selected_block"] else list(structure.keys()).index(st.session_state["selected_block"]))
 
-        if st.button("Начать тест"):
-            st.session_state["current_question"] = 0
-            st.session_state["score"] = 0
-            st.session_state["show_result"] = False
-            st.session_state["selected_answers"] = {i: [] for i in range(len(questions))}
-            st.rerun()
+        if block:
+            st.session_state["selected_block"] = block
 
-# Отображение теста с кнопками "Предыдущий вопрос" и "Следующий вопрос"
-if "questions" in st.session_state and "current_question" in st.session_state and not st.session_state.get("show_result", False):
+            # Выбор темы
+            st.header("Выберите тему")
+            theme = st.selectbox("Тема:", list(structure[block].keys()), index=0 if not st.session_state["selected_theme"] else list(structure[block].keys()).index(st.session_state["selected_theme"]))
+
+            if theme:
+                st.session_state["selected_theme"] = theme
+                st.session_state["questions"] = structure[block][theme]
+                st.session_state["current_question"] = 0
+                st.session_state["show_result"] = False
+                st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
+
+                if st.button("Начать тест"):
+                    st.session_state["current_question"] = 0
+                    st.session_state["show_result"] = False
+                    st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
+                    st.rerun()
+
+# Отображение теста по выбранной теме
+if "questions" in st.session_state and len(st.session_state["questions"]) > 0 and not st.session_state.get("show_result", False):
     q_idx = st.session_state["current_question"]
-    question_data = st.session_state["questions"][q_idx]
+    question_text = st.session_state["questions"][q_idx]
 
-    st.subheader(question_data["question"])
-    
+    st.subheader(f"{st.session_state['selected_theme']} - Вопрос {q_idx + 1} из {len(st.session_state['questions'])}")
+    st.write(question_text)
+
     selected_answers = st.session_state["selected_answers"].get(q_idx, [])
 
-    for i, answer in enumerate(question_data["answers"]):
-        key = f"q{q_idx}_a{i}"  # Уникальный ключ для каждого чекбокса
+    for i, answer in enumerate(["Ответ 1", "Ответ 2", "Ответ 3", "Ответ 4"]):  # Пока заглушка для вариантов
+        key = f"q{q_idx}_a{i}"
         checked = answer in selected_answers
         if st.checkbox(answer, key=key, value=checked):
             if answer not in selected_answers:
@@ -111,32 +99,28 @@ if "questions" in st.session_state and "current_question" in st.session_state an
             st.rerun()
 
     with col3:
-        if st.button("➡️ Следующий вопрос"):
-            correct_set = set(question_data["correct"])
-            selected_set = set(selected_answers)
-
-            # Начисляем балл только если выбраны ТОЛЬКО правильные ответы
-            if selected_set == correct_set:
-                st.session_state["score"] += 1
-
-            # Переходим к следующему вопросу
-            if q_idx + 1 < len(st.session_state["questions"]):
+        if q_idx + 1 < len(st.session_state["questions"]):
+            if st.button("➡️ Следующий вопрос"):
                 st.session_state["current_question"] += 1
                 st.rerun()
-            else:
+        else:
+            if st.button("✅ Завершить тест"):
                 st.session_state["show_result"] = True
                 st.rerun()
 
-# Отображение результата теста
+# Отображение результата теста после завершения
 if st.session_state.get("show_result", False):
     st.success("✅ Тест завершен!")
     total_questions = len(st.session_state["questions"])
-    score = st.session_state["score"]
-    st.write(f"📊 Ваш результат: **{score} из {total_questions}** правильных ответов.")
+    
+    # Пока просто заглушка для результата
+    st.write(f"📊 Ваш результат: **X из {total_questions}** правильных ответов.")  
 
     if st.button("Пройти снова"):
+        st.session_state["selected_block"] = None
+        st.session_state["selected_theme"] = None
+        st.session_state["questions"] = []
         st.session_state["current_question"] = 0
-        st.session_state["score"] = 0
         st.session_state["show_result"] = False
-        st.session_state["selected_answers"] = {i: [] for i in range(len(st.session_state["questions"]))}
+        st.session_state["selected_answers"] = {}
         st.rerun()
