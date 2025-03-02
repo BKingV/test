@@ -43,11 +43,10 @@ def extract_questions_from_tables(doc):
                 correct_answer = None
 
             if answer_text:
-                answer_options = answer_text.split("\n")  # Разбиваем варианты ответов по строкам
-                answers.extend([a.strip() for a in answer_options if a.strip()])
+                answers.append(answer_text)  # Добавляем новый вариант ответа
 
             if correct_text:  # Если есть правильный ответ
-                correct_answer = correct_text.strip()
+                correct_answer = answer_text  # Запоминаем правильный вариант
 
         if current_question and answers:
             questions.append({
