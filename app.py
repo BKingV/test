@@ -66,10 +66,12 @@ if uploaded_file:
     if not questions:
         st.warning("Не удалось извлечь вопросы. Проверьте формат документа.")
     else:
-        st.session_state["questions"] = questions
-        st.session_state["current_question"] = 0
-        st.session_state["score"] = 0
-        st.session_state["show_result"] = False
+        if "questions" not in st.session_state:
+            st.session_state["questions"] = questions
+            st.session_state["current_question"] = 0
+            st.session_state["score"] = 0
+            st.session_state["show_result"] = False
+
         st.success(f"Найдено {len(questions)} вопросов. Можно начинать тест!")
 
         if st.button("Начать тест"):
@@ -86,8 +88,12 @@ if "questions" in st.session_state and "current_question" in st.session_state an
     st.subheader(question_data["question"])
     
     selected_answers = []
-    for answer in question_data["answers"]:
-        checked = st.checkbox(answer, key=f"q{q_idx}_{answer}")
+    for i, answer in enumerate(question_data["answers"]):
+        key = f"q{q_idx}_a{i}"  # Уникальный ключ для каждого чекбокса
+        if key not in st.session_state:
+            st.session_state[key] = False  # Инициализируем состояние чекбоксов
+        
+        checked = st.checkbox(answer, key=key)
         if checked:
             selected_answers.append(answer)
 
@@ -101,9 +107,15 @@ if "questions" in st.session_state and "current_question" in st.session_state an
             if selected_set == correct_set:
                 st.session_state["score"] += 1
 
+            # Переход к следующему вопросу
             if q_idx + 1 < len(st.session_state["questions"]):
                 st.session_state["current_question"] += 1
-                st.rerun()  # Обновляем страницу, чтобы перейти к следующему вопросу
+
+                # Сброс состояния чекбоксов
+                for i in range(len(question_data["answers"])):
+                    st.session_state[f"q{q_idx}_a{i}"] = False
+
+                st.rerun()  # Гарантированно обновляем страницу
             else:
                 st.session_state["show_result"] = True
                 st.rerun()
@@ -119,4 +131,10 @@ if st.session_state.get("show_result", False):
         st.session_state["current_question"] = 0
         st.session_state["score"] = 0
         st.session_state["show_result"] = False
+        
+        # Сброс чекбоксов перед новым тестом
+        for key in list(st.session_state.keys()):
+            if key.startswith("q"):
+                del st.session_state[key]
+
         st.rerun()
