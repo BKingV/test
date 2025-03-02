@@ -147,57 +147,13 @@ if uploaded_file:
                         st.session_state["show_result"] = True
                         st.rerun()
 
+import pandas as pd
+import streamlit as st
+
 if st.session_state.get("show_result", False):
     st.subheader("📊 Результаты теста")
 
-    results_html = """
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 16px;
-        }
-        th, td {
-            padding: 10px;
-            border: 1px solid #ddd;
-            text-align: left;
-            vertical-align: top;
-        }
-        th {
-            background-color: #f4f4f4;
-        }
-        .correct {
-            background-color: #d4edda; /* Зеленый */
-            color: #155724;
-            font-weight: bold;
-        }
-        .incorrect {
-            background-color: #f8d7da; /* Красный */
-            color: #721c24;
-            font-weight: bold;
-        }
-        .short-text {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 300px;
-            display: inline-block;
-        }
-        .show-more {
-            cursor: pointer;
-            color: blue;
-            text-decoration: underline;
-            font-size: 14px;
-        }
-    </style>
-    <table>
-        <tr>
-            <th>Вопрос</th>
-            <th>Ваш ответ</th>
-            <th>Правильный ответ</th>
-        </tr>
-    """
-
+    incorrect_answers = []
     correct_count = 0
     total_questions = len(st.session_state["questions"])
 
@@ -206,29 +162,25 @@ if st.session_state.get("show_result", False):
         correct_answers = question_data["correct"]
 
         is_correct = set(user_answers) == set(correct_answers)
-        row_class = "correct" if is_correct else "incorrect"
 
-        # Обрезаем длинный текст
-        def format_text(text):
-            if len(text) > 100:
-                return f'<span class="short-text">{text[:100]}...</span> <span class="show-more" onclick="this.previousElementSibling.style.whiteSpace=\'normal\'; this.previousElementSibling.style.maxWidth=\'none\'; this.style.display=\'none\'">Показать полностью</span>'
-            return text
-
-        results_html += f"""
-        <tr class="{row_class}">
-            <td>{format_text(question_data["question"])}</td>
-            <td>{format_text(", ".join(user_answers) if user_answers else "—")}</td>
-            <td>{format_text(", ".join(correct_answers))}</td>
-        </tr>
-        """
-
-        if is_correct:
+        if not is_correct:  # Если ответ неверный, добавляем в таблицу
+            incorrect_answers.append({
+                "Вопрос": question_data["question"],
+                "Ваш ответ": ", ".join(user_answers) if user_answers else "—",
+                "Правильный ответ": ", ".join(correct_answers)
+            })
+        else:
             correct_count += 1
 
-    results_html += "</table>"
+    # Если есть ошибки, показываем таблицу
+    if incorrect_answers:
+        df_results = pd.DataFrame(incorrect_answers)
+        st.write(df_results)  # Отображаем DataFrame без ошибок
+    else:
+        st.success("🎉 Поздравляем! Вы ответили правильно на все вопросы.")
 
-    st.markdown(results_html, unsafe_allow_html=True)
-    st.success(f"🎉 Вы ответили правильно на {correct_count} из {total_questions} вопросов.")
+    # Итоговый результат
+    st.success(f"✅ Вы ответили правильно на {correct_count} из {total_questions} вопросов.")
 
     if st.button("🔄 Пройти еще раз"):
         st.session_state["test_started"] = False
