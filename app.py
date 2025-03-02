@@ -150,6 +150,8 @@ if uploaded_file:
 import pandas as pd
 import streamlit as st
 
+import streamlit as st
+
 if st.session_state.get("show_result", False):
     st.subheader("📊 Результаты теста")
 
@@ -163,7 +165,7 @@ if st.session_state.get("show_result", False):
 
         is_correct = set(user_answers) == set(correct_answers)
 
-        if not is_correct:  # Если ответ неверный, добавляем в таблицу
+        if not is_correct:  # Если ответ неверный, добавляем в список ошибок
             incorrect_answers.append({
                 "Вопрос": question_data["question"],
                 "Ваш ответ": ", ".join(user_answers) if user_answers else "—",
@@ -172,15 +174,21 @@ if st.session_state.get("show_result", False):
         else:
             correct_count += 1
 
-    # Если есть ошибки, показываем таблицу
-    if incorrect_answers:
-        df_results = pd.DataFrame(incorrect_answers)
-        st.write(df_results)  # Отображаем DataFrame без ошибок
-    else:
-        st.success("🎉 Поздравляем! Вы ответили правильно на все вопросы.")
-
-    # Итоговый результат
+    # Выводим общий результат
     st.success(f"✅ Вы ответили правильно на {correct_count} из {total_questions} вопросов.")
+
+    # Если есть ошибки, добавляем кнопку для их раскрытия
+    if incorrect_answers:
+        with st.expander("🔍 Показать ошибки", expanded=False):
+            for error in incorrect_answers:
+                with st.container():
+                    st.markdown(f"**❓ Вопрос:** {error['Вопрос']}", unsafe_allow_html=True)
+                    st.markdown(f"**❌ Ваш ответ:** {error['Ваш ответ']}", unsafe_allow_html=True)
+                    st.markdown(f"**✅ Правильный ответ:** {error['Правильный ответ']}", unsafe_allow_html=True)
+                    st.markdown("---")  # Разделитель между карточками
+
+    else:
+        st.success("🎉 Поздравляем! Все ответы верны!")
 
     if st.button("🔄 Пройти еще раз"):
         st.session_state["test_started"] = False
@@ -190,5 +198,6 @@ if st.session_state.get("show_result", False):
         st.session_state["show_result"] = False
         st.session_state["selected_answers"] = {}
         st.rerun()
+
 
 
