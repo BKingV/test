@@ -35,16 +35,26 @@ def extract_themes_and_questions(doc):
                 answers_idx = headers.index("варианты ответов")
                 correct_idx = headers.index("эталон") if "эталон" in headers else None
 
+                current_question = None
+
                 for row in rows[1:]:  # Пропускаем заголовки
                     question_text = row.cells[question_idx].text.strip()
                     answer_text = row.cells[answers_idx].text.strip()
                     correct_text = row.cells[correct_idx].text.strip() if correct_idx else ""
 
-                    themes[current_theme].append({
-                        "question": question_text,
-                        "answers": answer_text.split("\n") if answer_text else [],  # Разделяем ответы
-                        "correct": correct_text.split("\n") if correct_text else []  # Разделяем правильные ответы
-                    })
+                    # Если встретили новый вопрос — создаем его
+                    if current_question is None or current_question["question"] != question_text:
+                        current_question = {
+                            "question": question_text,
+                            "answers": [],
+                            "correct": []
+                        }
+                        themes[current_theme].append(current_question)
+
+                    # Добавляем вариант ответа к текущему вопросу
+                    current_question["answers"].append(answer_text)
+                    if correct_text:
+                        current_question["correct"].append(answer_text)
 
                 processing_started = True  # Теперь можно обрабатывать темы
 
