@@ -31,7 +31,8 @@ def extract_questions_from_tables(doc):
             answer_text = row.cells[answers_idx].text.strip()
             correct_text = row.cells[correct_idx].text.strip() if correct_idx else ""
 
-            if question_text:  # Если новая строка с вопросом
+            if question_text and question_text != current_question:
+                # Если это новый вопрос, сохраняем предыдущий и начинаем новый
                 if current_question and answers:
                     questions.append({
                         "question": current_question,
@@ -48,6 +49,7 @@ def extract_questions_from_tables(doc):
             if correct_text:  # Если есть правильный ответ
                 correct_answer = answer_text  # Запоминаем правильный вариант
 
+        # Добавляем последний вопрос после прохода по всем строкам
         if current_question and answers:
             questions.append({
                 "question": current_question,
