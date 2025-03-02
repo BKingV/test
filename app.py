@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from docx import Document
+import re
 
 st.title("📄 Онлайн-тестирование из Word-файла")
 
@@ -12,10 +13,12 @@ def extract_questions_from_docx(doc):
     current_question = None
     answers = []
 
+    question_pattern = re.compile(r"^\d+[\.\)]|\b[№]\s*\d+")  # Ищем номера вопросов (1., 2), (№ 1, №2)
+
     for para in doc.paragraphs:
         text = para.text.strip()
         
-        if text.startswith("❓") or text.endswith("?"):
+        if question_pattern.match(text) or text.endswith("?"):
             # Новый вопрос найден
             if current_question:
                 questions.append({"question": current_question, "answers": answers})
