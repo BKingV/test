@@ -53,7 +53,6 @@ def extract_themes_and_questions(doc):
 
     return themes
 
-# Обработка загруженного файла
 if uploaded_file:
     doc = Document(uploaded_file)
     themes = extract_themes_and_questions(doc)
@@ -69,8 +68,8 @@ if uploaded_file:
             st.session_state["test_started"] = False
             st.session_state["show_result"] = False
             st.session_state["selected_answers"] = {}
+            st.session_state["show_confirm_exit"] = False  # Добавлено окно подтверждения выхода
 
-        # Показываем выбор темы, если тест еще не начат
         if not st.session_state.get("test_started", False):
             st.subheader("📚 Выберите тему для тестирования:")
             selected_theme = st.selectbox("Выберите тему", list(st.session_state["themes"].keys()))
@@ -84,20 +83,31 @@ if uploaded_file:
                 st.session_state["selected_answers"] = {}
                 st.rerun()
 
-        # --- Показываем кнопку "Вернуться к выбору темы" ---
         if st.session_state.get("test_started", False):
             col1, col2 = st.columns([2, 8])
             with col1:
                 if st.button("🔙 Вернуться к выбору темы"):
+                    st.session_state["show_confirm_exit"] = True
+
+        # --- Окно подтверждения выхода ---
+        if st.session_state.get("show_confirm_exit", False):
+            st.warning("❓ Вы уверены, что хотите выйти? Ваши ответы не сохранятся.")
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("✅ Да, выйти"):
                     st.session_state["test_started"] = False
                     st.session_state["selected_theme"] = None
                     st.session_state["questions"] = []
                     st.session_state["current_question"] = 0
                     st.session_state["show_result"] = False
                     st.session_state["selected_answers"] = {}
+                    st.session_state["show_confirm_exit"] = False
+                    st.rerun()
+            with c2:
+                if st.button("❌ Отмена"):
+                    st.session_state["show_confirm_exit"] = False
                     st.rerun()
 
-        # --- Отображаем вопросы ---
         if st.session_state.get("test_started", False) and not st.session_state.get("show_result", False):
             q_idx = st.session_state["current_question"]
             question_data = st.session_state["questions"][q_idx]
@@ -137,7 +147,6 @@ if uploaded_file:
                         st.session_state["show_result"] = True
                         st.rerun()
 
-# --- ПОКАЗ РЕЗУЛЬТАТОВ ---
 if st.session_state.get("show_result", False):
     st.subheader("📊 Результаты теста")
 
