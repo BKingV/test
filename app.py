@@ -85,6 +85,7 @@ if uploaded_file:
             selected_theme = st.selectbox("Выберите тему", list(st.session_state["themes"].keys()), key="theme_select")
 
             # Получаем список подтем (уникальные заголовки)
+            st.write("📌 Все вопросы темы:", st.session_state["themes"][selected_theme])  # Покажем, какие есть вопросы и подтемы
             subthemes = list(set(q["subtheme"] for q in st.session_state["themes"][selected_theme] if q["subtheme"]))
 
             selected_subtheme = None
