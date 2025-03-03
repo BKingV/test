@@ -29,7 +29,7 @@ def extract_themes_and_questions(doc):
             answer_text = row.cells[answers_idx].text.strip()
             correct_text = row.cells[correct_idx].text.strip() if correct_idx else ""
             
-            if first_cell_text and first_cell_text.lower() == first_cell_text:
+            if first_cell_text and not question_text:
                 current_subtheme = first_cell_text
                 continue
             
@@ -60,64 +60,17 @@ if uploaded_file:
         st.session_state["test_started"] = False
 
         selected_theme = st.selectbox("Выберите тему", list(themes.keys()), key="theme_select")
-        subthemes = list(set(q["subtheme"] for q in themes[selected_theme] if q["subtheme"]))
+        subthemes = list(set(q["subtheme"] for q in themes[selected_theme] if q["subtheme"])) if themes[selected_theme] else []
 
+        selected_subtheme = None
         if subthemes:
             selected_subtheme = st.selectbox("Выберите подтему", subthemes, key="subtheme_select")
         
         if st.button("▶️ Начать тест"):
             st.session_state["selected_theme"] = selected_theme
-            st.session_state["selected_subtheme"] = selected_subtheme if subthemes else None
-            st.session_state["questions"] = [q for q in themes[selected_theme] if q["subtheme"] == selected_subtheme or not subthemes]
+            st.session_state["selected_subtheme"] = selected_subtheme if selected_subtheme else None
+            st.session_state["questions"] = [q for q in themes[selected_theme] if q.get("subtheme") == selected_subtheme or not selected_subtheme]
             st.session_state["test_started"] = True
             st.session_state["current_question"] = 0
             st.session_state["selected_answers"] = {}
             st.rerun()
-
-if st.session_state.get("test_started", False):
-    q_idx = st.session_state["current_question"]
-    questions = st.session_state["questions"]
-
-    if q_idx < len(questions):
-        question_data = questions[q_idx]
-        st.subheader(f"Вопрос {q_idx + 1} из {len(questions)}")
-        st.write(question_data["question"])
-        
-        selected_answers = st.session_state["selected_answers"].get(q_idx, [])
-        for i, answer in enumerate(question_data["answers"]):
-            key = f"q{q_idx}_a{i}"
-            checked = answer in selected_answers
-            if st.checkbox(answer, key=key, value=checked):
-                if answer not in selected_answers:
-                    selected_answers.append(answer)
-            else:
-                if answer in selected_answers:
-                    selected_answers.remove(answer)
-
-        st.session_state["selected_answers"][q_idx] = selected_answers
-        
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col1:
-            if q_idx > 0 and st.button("⬅️ Предыдущий вопрос"):
-                st.session_state["current_question"] -= 1
-                st.rerun()
-        with col3:
-            if q_idx + 1 < len(questions):
-                if st.button("➡️ Следующий вопрос"):
-                    st.session_state["current_question"] += 1
-                    st.rerun()
-            else:
-                if st.button("✅ Завершить тест"):
-                    st.session_state["show_result"] = True
-                    st.rerun()
-
-if st.session_state.get("show_result", False):
-    st.subheader("📊 Результаты теста")
-    correct_count = sum(1 for i, q in enumerate(st.session_state["questions"]) if set(st.session_state["selected_answers"].get(i, [])) == set(q["correct"]))
-    total_count = len(st.session_state["questions"])
-    st.success(f"🎉 Вы ответили правильно на {correct_count} из {total_count} вопросов.")
-    if st.button("🔄 Пройти еще раз"):
-        st.session_state["test_started"] = False
-        st.session_state["show_result"] = False
-        st.rerun()
-
