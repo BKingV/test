@@ -6,58 +6,68 @@ st.title("📄 Онлайн-тестирование по темам")
 uploaded_file = st.file_uploader("Загрузите Word-файл с тестами", type=["docx"])
 
 def extract_themes_and_questions(doc):
-    """Извлекает темы, подтемы и вопросы из таблицы документа Word."""
+    """Извлекает темы, подтемы и вопросы, начиная обработку только с первой темы, после которой идет таблица"""
     themes = {}
+    
+    st.write("📌 Количество таблиц в документе:", len(doc.tables))  # Проверяем количество таблиц
+    tables_iter = iter(doc.tables)
 
-    st.write("📌 Количество таблиц в документе:", len(doc.tables))  # Проверка количества таблиц
-
-    # Получаем первую тему из документа
-    current_theme = None
     for para in doc.paragraphs:
         text = para.text.strip()
+
         if text.startswith("ТЕМА:"):  
             current_theme = text.replace("ТЕМА:", "").strip()
-            break  # Берём только первую найденную тему
+            themes[current_theme] = {}
 
-    if not current_theme:
-        current_theme = "Неизвестная тема"
+            try:
+                table = next(tables_iter)  
+                rows = table.rows
+                if len(rows) < 2:
+                    continue  
 
-    st.write("📌 Найденная тема:", current_theme)  # Вывод темы для отладки
+                headers = [cell.text.strip().lower() for cell in rows[0].cells]
+                if "текст вопроса" not in headers or "варианты ответа" not in headers:
+                    continue  
 
-    # Берем последнюю таблицу (где подтемы и вопросы)
-    table = doc.tables[-1]
+                question_idx = headers.index("текст вопроса")
+                answers_idx = headers.index("варианты ответа")
+                correct_idx = headers.index("эталон") if "эталон" in headers else None
 
-    # Вывод содержимого таблицы для диагностики
-    for i, row in enumerate(table.rows):
-        row_data = [cell.text.strip() for cell in row.cells]
-        st.write(f"📌 Строка {i}:", row_data)
+                current_subtheme = None
 
-    current_subtheme = None  # Хранение текущей подтемы
+                for row in rows[1:]:
+                    first_cell_text = row.cells[0].text.strip()
+                    question_text = row.cells[question_idx].text.strip()
+                    answer_text = row.cells[answers_idx].text.strip()
+                    correct_text = row.cells[correct_idx].text.strip() if correct_idx else ""
 
-    for row in table.rows[2:]:  # Пропускаем заголовок таблицы
-        row_data = [cell.text.strip() for cell in row.cells]
+                    # Если строка содержит только название подтемы, сохраняем ее
+                    if first_cell_text and not question_text:
+                        current_subtheme = first_cell_text
+                        themes[current_theme][current_subtheme] = []
+                        continue
 
-        # Если строка содержит одинаковый текст во всех колонках — это подтема!
-        if len(set(row_data)) == 1 and row_data[0]:  
-            current_subtheme = row_data[0]
-            continue  # Не добавляем подтему в вопросы
+                    # Если есть вопрос, добавляем его к текущей подтеме (или теме)
+                    if current_subtheme:
+                        target_list = themes[current_theme][current_subtheme]
+                    else:
+                        target_list = themes[current_theme].setdefault("Без подтем", [])
 
-        # Проверяем, является ли строка вопросом (должны быть текст вопроса и варианты ответа)
-        if len(row_data) >= 3 and row_data[1] and row_data[2]:  
-            question_text = row_data[1]
-            answer_text = row_data[2]
-            correct_text = row_data[3] if len(row_data) > 3 else ""
+                    question_entry = {
+                        "question": question_text,
+                        "answers": [],
+                        "correct": []
+                    }
 
-            # Добавляем вопрос в список
-            question_data = {
-                "question": question_text,
-                "answers": [answer_text],
-                "correct": [answer_text] if correct_text else [],
-                "subtheme": current_subtheme  # Привязываем к подтеме
-            }
-            themes.setdefault(current_theme, []).append(question_data)
+                    if not target_list or target_list[-1]["question"] != question_text:
+                        target_list.append(question_entry)
 
-    st.write("📌 Итоговая структура данных:", themes)  # Проверка структуры данных
+                    target_list[-1]["answers"].append(answer_text)
+                    if correct_text:
+                        target_list[-1]["correct"].append(answer_text)
+
+            except StopIteration:
+                pass  
 
     return themes
 
@@ -77,32 +87,99 @@ if uploaded_file:
             st.session_state["test_started"] = False
             st.session_state["show_result"] = False
             st.session_state["selected_answers"] = {}
+            st.session_state["show_confirm_exit"] = False
 
-        if not st.session_state.get("test_started", False):
-            st.subheader("📚 Выберите тему:")
-            selected_theme = st.selectbox("Выберите тему", list(st.session_state["themes"].keys()), key="theme_select")
+        st.subheader("📚 Выберите тему:")
+        selected_theme = st.selectbox("Выберите тему", list(themes.keys()), key="theme_select")
 
-            # Получаем список подтем (уникальные заголовки)
-            subthemes = list(set(q["subtheme"] for q in st.session_state["themes"][selected_theme] if q["subtheme"]))
+        if selected_theme:
+            subthemes = list(themes[selected_theme].keys())
 
-            selected_subtheme = None
-            if subthemes:
+            if subthemes and subthemes != ["Без подтем"]:
                 st.subheader("📂 Выберите подтему:")
                 selected_subtheme = st.selectbox("Выберите подтему", subthemes, key="subtheme_select")
+            else:
+                selected_subtheme = None  
 
-            # Кнопка "Начать тест"
             if st.button("▶️ Начать тест"):
                 st.session_state["selected_theme"] = selected_theme
                 st.session_state["selected_subtheme"] = selected_subtheme
-
-                # Если выбрана подтема – берем только её вопросы
-                if selected_subtheme:
-                    st.session_state["questions"] = [q for q in st.session_state["themes"][selected_theme] if q["subtheme"] == selected_subtheme]
-                else:
-                    st.session_state["questions"] = st.session_state["themes"][selected_theme]  # Берем все вопросы темы
-
-                st.session_state["current_question"] = 0
+                st.session_state["questions"] = themes[selected_theme].get(selected_subtheme, [])
                 st.session_state["test_started"] = True
-                st.session_state["show_result"] = False
+                st.session_state["current_question"] = 0
                 st.session_state["selected_answers"] = {}
                 st.rerun()
+
+if st.session_state.get("test_started", False):
+    q_idx = st.session_state["current_question"]
+    questions = st.session_state["questions"]
+
+    if q_idx < len(questions):
+        question_data = questions[q_idx]
+
+        st.subheader(f"Вопрос {q_idx + 1} из {len(questions)}")
+        st.write(question_data["question"])
+
+        selected_answers = st.session_state["selected_answers"].get(q_idx, [])
+
+        for i, answer in enumerate(question_data["answers"]):
+            key = f"q{q_idx}_a{i}"
+            checked = answer in selected_answers
+            if st.checkbox(answer, key=key, value=checked):
+                if answer not in selected_answers:
+                    selected_answers.append(answer)
+            else:
+                if answer in selected_answers:
+                    selected_answers.remove(answer)
+
+        st.session_state["selected_answers"][q_idx] = selected_answers
+
+        col1, col2, col3 = st.columns([1, 2, 1])
+
+        with col1:
+            if q_idx > 0:
+                if st.button("⬅️ Предыдущий вопрос"):
+                    st.session_state["current_question"] -= 1
+                    st.rerun()
+
+        with col3:
+            if q_idx + 1 < len(questions):
+                if st.button("➡️ Следующий вопрос"):
+                    st.session_state["current_question"] += 1
+                    st.rerun()
+            else:
+                if st.button("✅ Завершить тест"):
+                    st.session_state["show_result"] = True
+                    st.rerun()
+
+if st.session_state.get("show_result", False):
+    st.subheader("📊 Результаты теста")
+
+    results = []
+    correct_count = 0
+    total_questions = len(st.session_state["questions"])
+
+    for i, question in enumerate(st.session_state["questions"]):
+        user_answers = st.session_state["selected_answers"].get(i, [])
+        correct_answers = question["correct"]
+        is_correct = set(user_answers) == set(correct_answers)
+
+        if is_correct:
+            correct_count += 1
+        else:
+            results.append({
+                "Вопрос": question["question"],
+                "Ваш ответ": ", ".join(user_answers),
+                "Правильный ответ": ", ".join(correct_answers)
+            })
+
+    st.write(f"✅ Вы ответили правильно на {correct_count} из {total_questions} вопросов.")
+
+    if results:
+        st.write("❌ Ошибки:")
+        for res in results:
+            with st.expander(res["Вопрос"]):
+                st.write(f"**Ваш ответ:** {res['Ваш ответ']}")
+                st.write(f"✅ **Правильный ответ:** {res['Правильный ответ']}")
+
+    if
