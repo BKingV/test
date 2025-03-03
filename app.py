@@ -182,4 +182,12 @@ if st.session_state.get("show_result", False):
                 st.write(f"**Ваш ответ:** {res['Ваш ответ']}")
                 st.write(f"✅ **Правильный ответ:** {res['Правильный ответ']}")
 
-    if
+    if st.button("🔄 Пройти еще раз"):
+        st.session_state["test_started"] = False
+        st.session_state["show_result"] = False
+        st.session_state["selected_theme"] = None
+        st.session_state["selected_subtheme"] = None
+        st.session_state["questions"] = []
+        st.session_state["current_question"] = 0
+        st.session_state["selected_answers"] = {}
+        st.rerun()
